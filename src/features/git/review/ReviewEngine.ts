@@ -38,9 +38,11 @@ export class ReviewEngine {
 
         await this.prepareTasks(fileDiffs);
 
-        const reviews = await this.executeTasks();
+        const fileReviews = await this.executeTasks();
 
-        return this.aggregateReviews(reviews);
+        const crossFile = await this.runCrossFileAnalysis(fileReviews);
+
+        return this.aggregateReviews(fileReviews, crossFile);
     }
 
     //#region Stage 1 — Diff Retrieval
@@ -247,15 +249,49 @@ export class ReviewEngine {
         return results;
     }
 
-    private aggregateReviews(reviews: DiffReview[]): DiffReview {
+    private aggregateReviews(
+        fileReviews: DiffReview[],
+        crossFile?: {
+            crossFileRisks: string[];
+            architecturalConcerns: string[];
+        }
+    ): DiffReview {
+
         return {
-            summary: reviews.map(r => r.summary).join("\n"),
-            breakingChanges: reviews.flatMap(r => r.breakingChanges),
-            risks: reviews.flatMap(r => r.risks),
-            suggestions: reviews.flatMap(r => r.suggestions),
-            missingTests: reviews.flatMap(r => r.missingTests),
-            schemaConcerns: reviews.flatMap(r => r.schemaConcerns)
+            summary: fileReviews.map(r => r.summary).join("\n"),
+            breakingChanges: fileReviews.flatMap(r => r.breakingChanges),
+            risks: fileReviews.flatMap(r => r.risks),
+            suggestions: fileReviews.flatMap(r => r.suggestions),
+            missingTests: fileReviews.flatMap(r => r.missingTests),
+            schemaConcerns: fileReviews.flatMap(r => r.schemaConcerns),
+
+            crossFileRisks: crossFile?.crossFileRisks ?? [],
+            architecturalConcerns: crossFile?.architecturalConcerns ?? []
         };
+    }
+
+    private async runCrossFileAnalysis(
+        fileReviews: DiffReview[]
+    ): Promise<{
+        crossFileRisks: string[];
+        architecturalConcerns: string[];
+    }> {
+
+        if (fileReviews.length <= 1) {
+            return {
+                crossFileRisks: [],
+                architecturalConcerns: []
+            };
+        }
+
+        const { buildCrossFilePrompt } = await import("./buildCrossFilePrompt");
+
+        const prompt = buildCrossFilePrompt(fileReviews);
+
+        return this.provider.generateStructuredJson<{
+            crossFileRisks: string[];
+            architecturalConcerns: string[];
+        }>(prompt);
     }
     //#endregion
 }

@@ -5,4 +5,6 @@ export interface DiffReview {
     suggestions: string[];
     missingTests: string[];
     schemaConcerns: string[];
+    crossFileRisks?: string[];
+    architecturalConcerns?: string[];
 }

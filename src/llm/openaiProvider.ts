@@ -127,7 +127,7 @@ export function buildCrossFilePrompt(reviews: DiffReview[]): string {
 
         Here are the results:
 
-        ${JSON.stringify(reviews, null, 2)}
+        ${JSON.stringify(reviews, null, 4)}
 
         Identify cross-file inconsistencies such as:
         - Migration added but model not updated
