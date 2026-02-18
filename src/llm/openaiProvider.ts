@@ -79,4 +79,24 @@ export class OpenAIProvider implements LLMProvider {
         }
 
     }
+
+    async generateRawJson<T>(prompt: string): Promise<T> {
+        const completion = await this.client.chat.completions.create({
+            model: "gpt-4o-mini",
+            temperature: 0.2,
+            messages: [
+                { role: "system", content: "Respond ONLY with valid JSON." },
+                { role: "user", content: prompt }
+            ]
+        });
+
+        const content = completion.choices[0].message.content;
+
+        if (!content) {
+            throw new Error("Empty response from LLM.");
+        }
+
+        return JSON.parse(content);
+    }
+
 }

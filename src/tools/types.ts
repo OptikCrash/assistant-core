@@ -1,7 +1,10 @@
+import { ZodType } from 'zod';
+
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export interface Tool {
+export interface Tool<TInput = unknown> {
     name: string;
     risk: RiskLevel;
-    execute(input: Record<string, any>): Promise<any>;
+    schema: ZodType<TInput>;
+    execute(input: TInput): Promise<any>;
 }

@@ -13,7 +13,7 @@ export interface PlanResponse {
     riskLevel: RiskLevel;
 }
 
-function calculateRisk(plan: TaskPlan): RiskLevel {
+export function calculateRisk(plan: TaskPlan): RiskLevel {
     const toolMap = new Map<string, typeof TOOL_REGISTRY[number]>(
         TOOL_REGISTRY.map(t => [t.name, t])
     );

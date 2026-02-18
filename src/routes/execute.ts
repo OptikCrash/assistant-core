@@ -1,11 +1,13 @@
 import { Router } from 'express';
+import { saveExecution } from '../audit/executionLogStore';
 import { getPlan } from '../planner/planStore';
+import { calculateRisk } from '../planner/taskPlanner';
 import { executeToolCall } from '../tools/toolEngine';
 
 export const executeRouter = Router();
 
 executeRouter.post('/', async (req, res) => {
-    const { planId } = req.body;
+    const { planId, confirmRisk } = req.body;
 
     if (!planId) {
         return res.status(400).json({ error: "planId is required" });
@@ -15,6 +17,22 @@ executeRouter.post('/', async (req, res) => {
 
     if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
+    }
+
+    // Recalculate risk
+    const riskLevel = calculateRisk(plan);
+
+    if (riskLevel === 'CRITICAL') {
+        return res.status(403).json({
+            error: "CRITICAL plans require elevated override."
+        });
+    }
+
+    if (riskLevel === 'HIGH' && !confirmRisk) {
+        return res.status(403).json({
+            error: "HIGH risk plan requires confirmation.",
+            riskLevel
+        });
     }
 
     const results = [];
@@ -38,8 +56,22 @@ executeRouter.post('/', async (req, res) => {
         }
     }
 
+    const status = results.some(r => !r.success) ? 'FAILED' : 'COMPLETED';
+
+    const executionRecord = saveExecution({
+        planId,
+        timestamp: new Date().toISOString(),
+        riskLevel,
+        confirmed: !!confirmRisk,
+        status,
+        toolResults: results
+    });
+
     return res.json({
         executed: true,
+        executionId: executionRecord.executionId,
+        status,
+        riskLevel,
         results
     });
 });

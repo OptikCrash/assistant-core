@@ -1,8 +1,10 @@
 import { generateMigrationTool } from "./generateMigration";
+import { getGitDiffTool } from "./getGitDiff";
 import { Tool } from "./types";
 
 const tools: Tool[] = [
-    generateMigrationTool
+    generateMigrationTool,
+    getGitDiffTool
 ];
 
 export async function executeToolCall(toolName: string, input: any) {
@@ -12,5 +14,14 @@ export async function executeToolCall(toolName: string, input: any) {
         throw new Error(`Tool not implemented: ${toolName}`);
     }
 
-    return tool.execute(input);
+    const parsed = tool.schema.safeParse(input);
+
+    if (!parsed.success) {
+        throw new Error(
+            `Invalid input for tool ${toolName}: ${parsed.error.message}`
+        );
+    }
+
+    return tool.execute(parsed.data);
 }
+
