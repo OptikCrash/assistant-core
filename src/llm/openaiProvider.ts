@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { DiffReview } from '../features/git/review/types';
 import { TOOL_REGISTRY } from '../tools/registry';
 import { TaskPlan } from '../types/messages';
 import { LLMProvider } from './types';
@@ -99,4 +100,47 @@ export class OpenAIProvider implements LLMProvider {
         return JSON.parse(content);
     }
 
+    async generateStructuredJson<T>(prompt: string): Promise<T> {
+        const completion = await this.client.chat.completions.create({
+            model: "gpt-4o-mini",
+            temperature: 0.2,
+            messages: [
+                { role: "system", content: "Respond ONLY with valid JSON." },
+                { role: "user", content: prompt }
+            ]
+        });
+
+        const content = completion.choices[0].message.content;
+
+        if (!content) {
+            throw new Error("Empty response from LLM.");
+        }
+
+        return JSON.parse(content) as T;
+    }
+
 }
+
+export function buildCrossFilePrompt(reviews: DiffReview[]): string {
+    return `
+        You are analyzing multiple file-level static analysis results.
+
+        Here are the results:
+
+        ${JSON.stringify(reviews, null, 2)}
+
+        Identify cross-file inconsistencies such as:
+        - Migration added but model not updated
+        - Model updated but DTO unchanged
+        - DTO updated but API layer unchanged
+        - Association change without migration
+        - Breaking change without version update
+
+        Return structured JSON:
+        {
+        "crossFileRisks": string[],
+        "architecturalConcerns": string[]
+        }
+    `;
+}
+
