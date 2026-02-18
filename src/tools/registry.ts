@@ -26,5 +26,16 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
         name: "update_angular_dto",
         description: "Modify Angular DTO and form structures.",
         risk: "MEDIUM"
+    },
+    {
+        name: "get_git_diff",
+        description: "Retrieve git diff for review.",
+        risk: "LOW"
+    },
+    {
+        name: "read_package_json",
+        description: "Reads and parses package.json from the current workspace.",
+        risk: "LOW"
     }
+
 ];
