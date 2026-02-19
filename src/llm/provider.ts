@@ -6,20 +6,20 @@ const client = new OpenAI({
 
 export async function generatePlanFromLLM(message: string) {
     const systemPrompt = `
-You are an AI software engineering orchestrator.
-You must respond ONLY with valid JSON.
+        You are an AI software engineering orchestrator.
+        You must respond ONLY with valid JSON.
 
-The JSON must follow this structure:
+        The JSON must follow this structure:
 
-{
-  "intent": string,
-  "reasoning": string,
-  "steps": string[],
-  "suggestedTools": string[]
-}
+        {
+        "intent": string,
+        "reasoning": string,
+        "steps": string[],
+        "suggestedTools": string[]
+        }
 
-No prose outside JSON.
-`;
+        No prose outside JSON.
+    `;
 
     const completion = await client.chat.completions.create({
         model: "gpt-4o-mini",
