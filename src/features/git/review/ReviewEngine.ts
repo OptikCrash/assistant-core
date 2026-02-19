@@ -22,6 +22,10 @@ interface ReviewTask {
         added: string[];
         removed: string[];
     };
+    methodChanges: {
+        added: string[];
+        removed: string[];
+    };
 }
 
 export class ReviewEngine {
@@ -92,6 +96,7 @@ export class ReviewEngine {
 
         // 🔥 NEW: detect changed exports from diff
         const exportChanges = this.extractExportChanges(fileDiff);
+        const methodChanges = this.extractMethodSignatureChanges(fileDiff);
 
         const analysisContent = this.buildHybridContext(
             fullFileContent,
@@ -125,7 +130,8 @@ export class ReviewEngine {
             estimatedTokens,
             imports: depInfo.imports,
             exports: depInfo.exports,
-            exportChanges
+            exportChanges,
+            methodChanges: methodChanges
         };
     }
     //#endregion
@@ -155,7 +161,8 @@ export class ReviewEngine {
                     fileType: this.classifyFile(task.filename),
                     imports: normalizedImports,
                     exports: task.exports,
-                    exportChanges: task.exportChanges,   // 👈 correct property
+                    exportChanges: task.exportChanges,
+                    methodChanges: task.methodChanges,
                     review
                 };
             }
@@ -382,6 +389,34 @@ export class ReviewEngine {
 
         while ((match = removeRegex.exec(diff)) !== null) {
             removed.push(match[1]);
+        }
+
+        return { added, removed };
+    }
+
+    private extractMethodSignatureChanges(diff: string): {
+        added: string[];
+        removed: string[];
+    } {
+
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        const methodRegex =
+            /^(?<prefix>[+-])\s*(?:public\s+)?(?:async\s+)?([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*:\s*([A-Za-z0-9_<>\[\]\|]+)/gm;
+
+        let match: RegExpExecArray | null;
+
+        while ((match = methodRegex.exec(diff)) !== null) {
+            const prefix = match.groups?.prefix;
+            const methodName = match[2];
+            const params = match[3];
+            const returnType = match[4];
+
+            const signature = `${methodName}(${params}): ${returnType}`;
+
+            if (prefix === "+") added.push(signature);
+            if (prefix === "-") removed.push(signature);
         }
 
         return { added, removed };

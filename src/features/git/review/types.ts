@@ -18,6 +18,10 @@ export interface FileReview {
         added: string[];
         removed: string[];
     };
+    methodChanges: {
+        added: string[];
+        removed: string[];
+    };
     review: DiffReview;
 }
 
