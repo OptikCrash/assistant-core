@@ -62,9 +62,40 @@ export function buildCrossFilePrompt(
         Respond ONLY with valid JSON in this structure:
 
         {
-        "crossFileRisks": string[],
-        "architecturalConcerns": string[]
+            "crossFileRisks": [
+                {
+                "message": string,
+                "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+                }
+            ],
+            "architecturalConcerns": [
+                {
+                "message": string,
+                "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+                }
+            ]
         }
+
+        Severity guidance:
+
+        CRITICAL:
+        - Removed exports still imported
+        - Breaking signature changes across files
+        - Async to sync conversion
+        - Removed methods still referenced
+
+        HIGH:
+        - Return type changes affecting callers
+        - Interface contract drift
+        - Many-to-many mismatch across layers
+
+        MEDIUM:
+        - Rename not propagated
+        - DTO / model misalignment
+        - Layering violations
+
+        LOW:
+        - Structural smells without immediate breakage
 
         Here is the structured file review data:
 

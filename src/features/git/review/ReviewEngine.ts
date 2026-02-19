@@ -1,8 +1,9 @@
 import { LLMProvider } from "../../../llm/types";
 import { getGitDiffTool } from "../../../tools/getGitDiff";
 import { readFileTool } from "../../../tools/readFile";
+import { RiskLevel } from "../../../tools/types";
 import { buildSmartFilePrompt } from "./smartPrompt";
-import { DiffReview, FileReview, ImportSpec } from "./types";
+import { DiffReview, FileReview, ImportSpec, StructuredIssue } from "./types";
 
 const SMALL_FILE_LIMIT = 8000;
 const MEDIUM_FILE_LIMIT = 20000;
@@ -29,9 +30,20 @@ interface ReviewTask {
 }
 
 export class ReviewEngine {
-
     private totalEstimatedTokens = 0;
     private tasks: ReviewTask[] = [];
+    private readonly riskWeights = {
+        BREAKING_CHANGE: 30,
+        METHOD_REMOVAL: 20,
+        METHOD_ADDITION: 5,
+        EXPORT_REMOVAL: 25,
+        EXPORT_ADDITION: 5,
+        MIGRATION_TOUCH: 15,
+        CROSS_FILE_HIGH: 25,
+        CROSS_FILE_CRITICAL: 40,
+        ARCH_CONCERN: 10,
+        SCHEMA_CONCERN: 15
+    }
 
     constructor(
         private provider: LLMProvider
@@ -147,6 +159,19 @@ export class ReviewEngine {
                         task.prompt
                     );
 
+                const normalizedReview: DiffReview = {
+                    summary: review.summary ?? "",
+                    breakingChanges: review.breakingChanges ?? [],
+                    risks: review.risks ?? [],
+                    suggestions: review.suggestions ?? [],
+                    missingTests: review.missingTests ?? [],
+                    schemaConcerns: review.schemaConcerns ?? [],
+                    crossFileRisks: review.crossFileRisks ?? [],
+                    architecturalConcerns: review.architecturalConcerns ?? [],
+                    overallRisk: review.overallRisk ?? "LOW",
+                    confidence: review.confidence ?? 0
+                };
+
                 // Normalize filename
                 const normalizedFilename = this.normalizeFilename(task.filename);
 
@@ -163,7 +188,7 @@ export class ReviewEngine {
                     exports: task.exports,
                     exportChanges: task.exportChanges,
                     methodChanges: task.methodChanges,
-                    review
+                    review: normalizedReview
                 };
             }
         );
@@ -294,10 +319,24 @@ export class ReviewEngine {
     private aggregateReviews(
         fileReviews: FileReview[],
         crossFile?: {
-            crossFileRisks: string[];
-            architecturalConcerns: string[];
+            crossFileRisks: StructuredIssue[];
+            architecturalConcerns: StructuredIssue[];
         }
     ): DiffReview {
+
+        const crossFileRisks = crossFile?.crossFileRisks ?? [];
+        const architecturalConcerns = crossFile?.architecturalConcerns ?? [];
+
+        const overallRisk = this.computeOverallSeverity(
+            fileReviews,
+            crossFileRisks,
+            architecturalConcerns
+        );
+
+        const confidence = this.computeConfidence(
+            fileReviews,
+            crossFileRisks
+        );
 
         return {
             summary: fileReviews
@@ -310,16 +349,19 @@ export class ReviewEngine {
             missingTests: fileReviews.flatMap(r => r.review.missingTests),
             schemaConcerns: fileReviews.flatMap(r => r.review.schemaConcerns),
 
-            crossFileRisks: crossFile?.crossFileRisks ?? [],
-            architecturalConcerns: crossFile?.architecturalConcerns ?? []
+            crossFileRisks,
+            architecturalConcerns,
+
+            overallRisk,
+            confidence
         };
     }
 
     private async runCrossFileAnalysis(
         fileReviews: FileReview[]
     ): Promise<{
-        crossFileRisks: string[];
-        architecturalConcerns: string[];
+        crossFileRisks: StructuredIssue[];
+        architecturalConcerns: StructuredIssue[];
     }> {
 
         if (fileReviews.length <= 1) {
@@ -334,8 +376,8 @@ export class ReviewEngine {
         const prompt = buildCrossFilePrompt(fileReviews);
 
         return this.provider.generateStructuredJson<{
-            crossFileRisks: string[];
-            architecturalConcerns: string[];
+            crossFileRisks: StructuredIssue[];
+            architecturalConcerns: StructuredIssue[];
         }>(prompt);
     }
 
@@ -420,6 +462,91 @@ export class ReviewEngine {
         }
 
         return { added, removed };
+    }
+
+    private computeOverallSeverity(
+        fileReviews: FileReview[],
+        crossFileRisks: StructuredIssue[],
+        architecturalConcerns: StructuredIssue[]
+    ): RiskLevel {
+
+        let score = 0;
+
+        for (const review of fileReviews) {
+
+            if ((review.review.breakingChanges ?? []).length > 0) {
+                score += this.riskWeights.BREAKING_CHANGE;
+            }
+
+            score += (review.methodChanges?.removed ?? []).length *
+                this.riskWeights.METHOD_REMOVAL;
+
+            score += review.methodChanges.added.length *
+                this.riskWeights.METHOD_ADDITION;
+
+            score += (review.exportChanges?.removed ?? []).length *
+                this.riskWeights.EXPORT_REMOVAL;
+
+            score += review.exportChanges.added.length *
+                this.riskWeights.EXPORT_ADDITION;
+
+            if (review.fileType === "migration") {
+                score += this.riskWeights.MIGRATION_TOUCH;
+            }
+
+            score += (review.review.schemaConcerns ?? []).length *
+                this.riskWeights.SCHEMA_CONCERN;
+        }
+
+        for (const issue of crossFileRisks) {
+            if (issue.risk === "CRITICAL") {
+                score += this.riskWeights.CROSS_FILE_CRITICAL;
+            } else if (issue.risk === "HIGH") {
+                score += this.riskWeights.CROSS_FILE_HIGH;
+            }
+        }
+
+        score += architecturalConcerns.length *
+            this.riskWeights.ARCH_CONCERN;
+
+        // Map numeric score to RiskLevel
+        if (score >= 70) return "CRITICAL";
+        if (score >= 40) return "HIGH";
+        if (score >= 20) return "MEDIUM";
+        return "LOW";
+    }
+
+    private computeConfidence(
+        fileReviews: FileReview[],
+        crossFileRisks: StructuredIssue[]
+    ): number {
+
+        let confidence = 0;
+
+        for (const review of fileReviews) {
+
+            if ((review.exportChanges?.removed ?? []).length > 0) {
+                confidence += 20;
+            }
+
+            if ((review.methodChanges?.removed ?? []).length > 0) {
+                confidence += 15;
+            }
+
+            if ((review.review.breakingChanges ?? []).length > 0) {
+                confidence += 25;
+            }
+        }
+
+        for (const issue of crossFileRisks) {
+            if (issue.risk === "CRITICAL") {
+                confidence += 40;
+            } else if (issue.risk === "HIGH") {
+                confidence += 25;
+            }
+        }
+
+        return Math.min(confidence, 100);
     }
     //#endregion
 }

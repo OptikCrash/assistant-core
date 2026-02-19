@@ -1,6 +1,13 @@
 import { ZodType } from 'zod';
 
-export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export const RiskLevels = {
+    LOW: 'LOW',
+    MEDIUM: 'MEDIUM',
+    HIGH: 'HIGH',
+    CRITICAL: 'CRITICAL',
+} as const;
+
+export type RiskLevel = typeof RiskLevels[keyof typeof RiskLevels];
 
 export interface Tool<TInput = unknown> {
     name: string;

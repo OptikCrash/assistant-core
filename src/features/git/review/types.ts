@@ -1,3 +1,10 @@
+import { RiskLevel } from "../../../tools/types";
+
+export interface StructuredIssue {
+    message: string;
+    risk: RiskLevel;
+}
+
 export interface DiffReview {
     summary: string;
     breakingChanges: string[];
@@ -5,8 +12,10 @@ export interface DiffReview {
     suggestions: string[];
     missingTests: string[];
     schemaConcerns: string[];
-    crossFileRisks?: string[];
-    architecturalConcerns?: string[];
+    crossFileRisks?: StructuredIssue[];
+    architecturalConcerns?: StructuredIssue[];
+    overallRisk: RiskLevel;
+    confidence: number; // 0-100
 }
 
 export interface FileReview {
