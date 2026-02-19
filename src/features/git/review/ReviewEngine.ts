@@ -2,7 +2,7 @@ import { LLMProvider } from "../../../llm/types";
 import { getGitDiffTool } from "../../../tools/getGitDiff";
 import { readFileTool } from "../../../tools/readFile";
 import { buildSmartFilePrompt } from "./smartPrompt";
-import { DiffReview } from "./types";
+import { DiffReview, FileReview, ImportSpec } from "./types";
 
 const SMALL_FILE_LIMIT = 8000;
 const MEDIUM_FILE_LIMIT = 20000;
@@ -16,6 +16,9 @@ interface ReviewTask {
     filename: string;
     prompt: string;
     estimatedTokens: number;
+    imports: ImportSpec[];
+    exports: string[];
+    changedExports: string[];
 }
 
 export class ReviewEngine {
@@ -81,6 +84,16 @@ export class ReviewEngine {
             fullFileContent = "";
         }
 
+        const { scanDependencies } = await import("./dependencyScanner");
+        const depInfo = scanDependencies(fullFileContent || "");
+
+        // 🔥 NEW: detect changed exports from diff
+        const diffExports = this.extractExportsFromDiff(fileDiff);
+
+        const changedExports = diffExports.filter(
+            e => !depInfo.exports.includes(e)
+        );
+
         const analysisContent = this.buildHybridContext(
             fullFileContent,
             fileDiff
@@ -110,19 +123,32 @@ export class ReviewEngine {
         return {
             filename,
             prompt,
-            estimatedTokens
+            estimatedTokens,
+            imports: depInfo.imports,
+            exports: depInfo.exports,
+            changedExports
         };
     }
     //#endregion
     //#region Stage 3 — Parallel Execution
-    private async executeTasks(): Promise<DiffReview[]> {
+    private async executeTasks(): Promise<FileReview[]> {
         return this.parallelMap(
             this.tasks,
             MAX_PARALLEL_REVIEWS,
             async (task) => {
-                return this.provider.generateStructuredJson<DiffReview>(
-                    task.prompt
-                );
+                const review =
+                    await this.provider.generateStructuredJson<DiffReview>(
+                        task.prompt
+                    );
+
+                return {
+                    filename: task.filename,
+                    fileType: this.classifyFile(task.filename),
+                    imports: task.imports,
+                    exports: task.exports,
+                    changedExports: task.changedExports,
+                    review
+                };
             }
         );
     }
@@ -250,7 +276,7 @@ export class ReviewEngine {
     }
 
     private aggregateReviews(
-        fileReviews: DiffReview[],
+        fileReviews: FileReview[],
         crossFile?: {
             crossFileRisks: string[];
             architecturalConcerns: string[];
@@ -258,12 +284,15 @@ export class ReviewEngine {
     ): DiffReview {
 
         return {
-            summary: fileReviews.map(r => r.summary).join("\n"),
-            breakingChanges: fileReviews.flatMap(r => r.breakingChanges),
-            risks: fileReviews.flatMap(r => r.risks),
-            suggestions: fileReviews.flatMap(r => r.suggestions),
-            missingTests: fileReviews.flatMap(r => r.missingTests),
-            schemaConcerns: fileReviews.flatMap(r => r.schemaConcerns),
+            summary: fileReviews
+                .map(r => r.review.summary)
+                .join("\n"),
+
+            breakingChanges: fileReviews.flatMap(r => r.review.breakingChanges),
+            risks: fileReviews.flatMap(r => r.review.risks),
+            suggestions: fileReviews.flatMap(r => r.review.suggestions),
+            missingTests: fileReviews.flatMap(r => r.review.missingTests),
+            schemaConcerns: fileReviews.flatMap(r => r.review.schemaConcerns),
 
             crossFileRisks: crossFile?.crossFileRisks ?? [],
             architecturalConcerns: crossFile?.architecturalConcerns ?? []
@@ -271,7 +300,7 @@ export class ReviewEngine {
     }
 
     private async runCrossFileAnalysis(
-        fileReviews: DiffReview[]
+        fileReviews: FileReview[]
     ): Promise<{
         crossFileRisks: string[];
         architecturalConcerns: string[];
@@ -292,6 +321,20 @@ export class ReviewEngine {
             crossFileRisks: string[];
             architecturalConcerns: string[];
         }>(prompt);
+    }
+
+    private extractExportsFromDiff(diff: string): string[] {
+        const regex =
+            /^\+export\s+(?:class|function|interface|const|type)\s+(\w+)/gm;
+
+        const results: string[] = [];
+        let match;
+
+        while ((match = regex.exec(diff)) !== null) {
+            results.push(match[1]);
+        }
+
+        return results;
     }
     //#endregion
 }

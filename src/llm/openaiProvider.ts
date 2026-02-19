@@ -57,6 +57,7 @@ export class OpenAIProvider implements LLMProvider {
         }
 
         try {
+
             const plan: TaskPlan = JSON.parse(content);
 
             // Validate tool selection
@@ -115,8 +116,9 @@ export class OpenAIProvider implements LLMProvider {
         if (!content) {
             throw new Error("Empty response from LLM.");
         }
+        const cleaned = stripMarkdown(content);
 
-        return JSON.parse(content) as T;
+        return JSON.parse(cleaned) as T;
     }
 
 }
@@ -144,3 +146,11 @@ export function buildCrossFilePrompt(reviews: DiffReview[]): string {
     `;
 }
 
+export function stripMarkdown(text: string): string {
+    return text
+        .trim()
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/```$/, "")
+        .trim();
+}
