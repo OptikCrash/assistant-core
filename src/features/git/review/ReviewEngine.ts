@@ -18,7 +18,10 @@ interface ReviewTask {
     estimatedTokens: number;
     imports: ImportSpec[];
     exports: string[];
-    changedExports: string[];
+    exportChanges: {
+        added: string[];
+        removed: string[];
+    };
 }
 
 export class ReviewEngine {
@@ -88,11 +91,7 @@ export class ReviewEngine {
         const depInfo = scanDependencies(fullFileContent || "");
 
         // 🔥 NEW: detect changed exports from diff
-        const diffExports = this.extractExportsFromDiff(fileDiff);
-
-        const changedExports = diffExports.filter(
-            e => !depInfo.exports.includes(e)
-        );
+        const exportChanges = this.extractExportChanges(fileDiff);
 
         const analysisContent = this.buildHybridContext(
             fullFileContent,
@@ -126,7 +125,7 @@ export class ReviewEngine {
             estimatedTokens,
             imports: depInfo.imports,
             exports: depInfo.exports,
-            changedExports
+            exportChanges
         };
     }
     //#endregion
@@ -335,6 +334,33 @@ export class ReviewEngine {
         }
 
         return results;
+    }
+
+    private extractExportChanges(diff: string): {
+        added: string[];
+        removed: string[];
+    } {
+
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        const addRegex =
+            /^\+export\s+(?:class|function|interface|const|type)\s+(\w+)/gm;
+
+        const removeRegex =
+            /^\-export\s+(?:class|function|interface|const|type)\s+(\w+)/gm;
+
+        let match;
+
+        while ((match = addRegex.exec(diff)) !== null) {
+            added.push(match[1]);
+        }
+
+        while ((match = removeRegex.exec(diff)) !== null) {
+            removed.push(match[1]);
+        }
+
+        return { added, removed };
     }
     //#endregion
 }

@@ -9,61 +9,46 @@ export function buildCrossFilePrompt(
 
         Each file review contains:
 
-        - filename: string
-        - fileType: string
-        - imports: array of:
-            {
-                module: string,
-                symbols: string[],
-                isTypeOnly?: boolean
-            }
+        - filename
+        - imports: array of { module, symbols, isTypeOnly }
         - exports: string[]
-        - changedExports: string[]
-        - review: structured file-level analysis
+        - exportChanges:
+            {
+            added: string[],
+            removed: string[]
+            }
+        - review: file-level structured review
 
-        Your task is to analyze structural ripple effects across files.
+        Your task:
 
-        You MUST:
+        1. Detect breaking ripple effects:
+        - If a file has exportChanges.removed including symbol X
+        - AND another file imports symbol X
+        - THEN this is a HIGH confidence break.
 
-        1. Detect dependency propagation risks:
-        - If File A has changedExports including symbol X
-        - AND File B imports symbol X from File A
-        - THEN assess whether File B may break or require updates.
+        2. Detect renames:
+        - If a file has both removed: X and added: Y
+        - AND another file imports X
+        - This likely indicates a rename not propagated.
 
-        2. Detect:
-        - Exported symbol renames
-        - Removed exports
+        3. Detect contract drift:
         - Return type changes affecting callers
         - Interface changes affecting consumers
-        - Schema drift across layers (DTO ↔ model ↔ migration)
-        - Many-to-many relationship inconsistencies
-        - Contract mismatches between files
+        - Schema drift across layers
 
-        3. Ignore stylistic changes and formatting.
+        4. Only report real structural risks.
+        Do NOT speculate.
+        Do NOT repeat file-level summary comments.
 
-        4. Only report REAL structural risks.
-        Do not speculate beyond the provided data.
-
-        Respond ONLY with valid JSON in this structure:
+        Respond ONLY with valid JSON:
 
         {
-            "crossFileRisks": string[],
-            "architecturalConcerns": string[]
+        "crossFileRisks": string[],
+        "architecturalConcerns": string[]
         }
 
-        Cross-file risks should:
-        - Reference specific filenames when possible
-        - Reference specific symbols when possible
-        - Explain the ripple clearly and concisely
-
-        Architectural concerns should:
-        - Identify layering violations
-        - Identify contract boundary erosion
-        - Identify cross-layer drift
-
-        Here is the structured file review data:
+        Here is the structured file data:
 
         ${JSON.stringify(fileReviews, null, 4)}
-
     `;
 }

@@ -12,11 +12,12 @@ export interface DiffReview {
 export interface FileReview {
     filename: string;
     fileType: string;
-
-    imports: ImportSpec[];   // <-- changed
+    imports: ImportSpec[];
     exports: string[];
-    changedExports: string[];
-
+    exportChanges: {
+        added: string[];
+        removed: string[];
+    };
     review: DiffReview;
 }
 
