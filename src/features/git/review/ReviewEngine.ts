@@ -135,17 +135,27 @@ export class ReviewEngine {
             this.tasks,
             MAX_PARALLEL_REVIEWS,
             async (task) => {
+
                 const review =
                     await this.provider.generateStructuredJson<DiffReview>(
                         task.prompt
                     );
 
+                // Normalize filename
+                const normalizedFilename = this.normalizeFilename(task.filename);
+
+                // Normalize imports to resolved module paths
+                const normalizedImports = task.imports.map(i => ({
+                    ...i,
+                    module: this.resolveImportModule(task.filename, i.module)
+                }));
+
                 return {
-                    filename: task.filename,
+                    filename: normalizedFilename,
                     fileType: this.classifyFile(task.filename),
-                    imports: task.imports,
+                    imports: normalizedImports,
                     exports: task.exports,
-                    changedExports: task.changedExports,
+                    exportChanges: task.exportChanges,   // 👈 correct property
                     review
                 };
             }
@@ -322,18 +332,32 @@ export class ReviewEngine {
         }>(prompt);
     }
 
-    private extractExportsFromDiff(diff: string): string[] {
-        const regex =
-            /^\+export\s+(?:class|function|interface|const|type)\s+(\w+)/gm;
+    private normalizeFilename(path: string): string {
+        return path
+            .replace(/^\.\/+/, "")
+            .replace(/\.ts$/, "")
+            .replace(/\\/g, "/");
+    }
 
-        const results: string[] = [];
-        let match;
+    private resolveImportModule(
+        importerFilename: string,
+        moduleSpecifier: string
+    ): string {
 
-        while ((match = regex.exec(diff)) !== null) {
-            results.push(match[1]);
+        if (!moduleSpecifier.startsWith(".")) {
+            return moduleSpecifier; // external package
         }
 
-        return results;
+        const baseDir = importerFilename.substring(
+            0,
+            importerFilename.lastIndexOf("/")
+        );
+
+        const combined = `${baseDir}/${moduleSpecifier}`
+            .replace(/\/\.\//g, "/")
+            .replace(/\/[^/]+\/\.\.\//g, "/");
+
+        return this.normalizeFilename(combined);
     }
 
     private extractExportChanges(diff: string): {
