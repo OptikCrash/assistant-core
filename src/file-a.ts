@@ -1,4 +1,4 @@
-export class ExampleService2 {
+export class ExampleService {
     run(): string {
         return "Hello, world!";
     }
