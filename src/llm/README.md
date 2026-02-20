@@ -33,6 +33,7 @@ Defines the contract that all LLM providers must implement.
 interface LLMProvider {
   generatePlan(message: string): Promise<TaskPlan>;
   generateRawJson<T>(prompt: string): Promise<T>;
+  generateStructuredJson<T>(prompt: string): Promise<T>;
 }
 ```
 
@@ -49,6 +50,12 @@ interface LLMProvider {
 - Generic method for getting structured JSON responses
 - Used for specialized tasks like code review
 - Type parameter `T` ensures type safety for the response
+
+**`generateStructuredJson<T>(prompt: string): Promise<T>`**
+
+- Like `generateRawJson`, but cleans markdown code fences before parsing
+- Used by the smart review engine for more resilient parsing
+- Ideal when the model occasionally wraps output in ```json fences
 
 ---
 
@@ -214,6 +221,28 @@ const review = await provider.generateRawJson<CodeReview>(
 
 ---
 
+**`generateStructuredJson<T>(prompt: string): Promise<T>`**
+
+Generates structured JSON with extra cleanup for markdown-wrapped outputs.
+
+**Use Cases:**
+
+- Smart review engine output parsing
+- Any prompt where the model might wrap JSON in ```json fences
+
+**Implementation Details:**
+
+- Uses the same OpenAI model and temperature
+- Strips markdown fences before parsing
+
+**Example:**
+
+```typescript
+const review = await provider.generateStructuredJson<DiffReview>(prompt);
+```
+
+---
+
 ## Adding a New Provider
 
 To add support for a new LLM provider (e.g., Anthropic Claude, Google Gemini):
@@ -241,6 +270,10 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async generateRawJson<T>(prompt: string): Promise<T> {
+    // Implement using Anthropic API
+  }
+
+  async generateStructuredJson<T>(prompt: string): Promise<T> {
     // Implement using Anthropic API
   }
 }
@@ -321,7 +354,8 @@ const mockProvider: LLMProvider = {
     steps: ["Step 1"],
     toolCalls: [{ tool: "read_schema", input: {} }]
   }),
-  generateRawJson: async <T>(prompt: string) => ({} as T)
+  generateRawJson: async <T>(prompt: string) => ({} as T),
+  generateStructuredJson: async <T>(prompt: string) => ({} as T)
 };
 ```
 

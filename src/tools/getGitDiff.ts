@@ -6,6 +6,7 @@ import { Tool } from './types';
 const execAsync = promisify(exec);
 
 const GetGitDiffSchema = z.object({
+    rootPath: z.string(),
     staged: z.boolean().optional(),
     baseBranch: z.string().optional()
 });
@@ -18,21 +19,21 @@ export const getGitDiffTool: Tool<GetGitDiffInput> = {
     schema: GetGitDiffSchema,
 
     async execute(input) {
+        const { rootPath, staged, baseBranch } = input;
 
         let command = "git diff";
 
-        if (input.staged) {
+        if (staged) {
             command = "git diff --staged";
-        } else if (input.baseBranch) {
-            command = `git diff ${input.baseBranch}`;
+        } else if (baseBranch) {
+            command = `git diff ${baseBranch}`;
         }
 
         const { stdout } = await execAsync(command, {
+            cwd: rootPath,
             maxBuffer: 10 * 1024 * 1024
         });
 
-        return {
-            diff: stdout
-        };
+        return { diff: stdout };
     }
 };

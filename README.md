@@ -11,6 +11,7 @@ Assistant Core acts as an AI orchestrator for development tasks, providing a str
 3. Validates risk levels before execution
 4. Executes approved tasks using registered tools
 5. Maintains audit logs of all executions
+6. Tracks workspaces for context-aware tooling and reviews
 
 The system includes multiple safety layers including risk classification (LOW/MEDIUM/HIGH/CRITICAL) and approval workflows to prevent unintended changes.
 
@@ -21,6 +22,8 @@ The system includes multiple safety layers including risk classification (LOW/ME
 - **✅ Approval Workflow**: Requires confirmation for high-risk operations
 - **📝 Execution Logging**: Complete audit trail of all executed tasks
 - **🔍 Git Review**: AI-powered code review of git diffs
+- **🧭 Smart Review Engine**: Per-file analysis plus cross-file risk detection
+- **🗂️ Workspace Registry**: Register workspaces for safer, scoped tools
 - **🔧 Extensible Tools**: Pluggable tool system for database migrations, code modifications, and more
 
 ## Prerequisites
@@ -167,6 +170,8 @@ Retrieve execution logs for a specific execution.
 
 Get an AI-powered review of staged git changes.
 
+This is the legacy single-pass reviewer. For cross-file analysis and workspace-aware context, use `/review-smart`.
+
 **Response:**
 
 ```json
@@ -177,6 +182,70 @@ Get an AI-powered review of staged git changes.
   "suggestions": ["Consider adding a default value or allowing NULL"],
   "missingTests": ["Migration rollback test"],
   "schemaConcerns": ["Email validation not enforced at DB level"]
+}
+```
+
+### POST `/review-smart`
+
+Run the smart review engine, which performs per-file analysis and cross-file dependency checks.
+
+**Request:**
+
+```json
+{
+  "workspaceId": "workspace-id-here"
+}
+```
+
+**Response (truncated):**
+
+```json
+{
+  "summary": "Updated review engine and workspace routing",
+  "breakingChanges": [],
+  "risks": ["Potential breaking export removal in review module"],
+  "suggestions": [],
+  "missingTests": [],
+  "schemaConcerns": [],
+  "crossFileRisks": [
+    { "message": "Removed export still imported in review service", "risk": "HIGH" }
+  ],
+  "architecturalConcerns": [],
+  "overallRisk": "HIGH",
+  "confidence": 82
+}
+```
+
+### Workspace Endpoints
+
+Register and validate workspaces for tools that require a repository context.
+
+**POST** `/workspace/validate`
+
+```json
+{
+  "rootPath": "/path/to/repo"
+}
+```
+
+**POST** `/workspace/register`
+
+```json
+{
+  "id": "BOSS",
+  "rootPath": "/path/to/repo"
+}
+```
+
+**GET** `/workspace/:id/status`
+
+```json
+{
+  "currentBranch": "main",
+  "hasUncommittedChanges": true,
+  "hasStagedChanges": false,
+  "aheadBy": 1,
+  "behindBy": 0
 }
 ```
 
@@ -199,6 +268,9 @@ Current tools registered in the system:
 - `update_angular_dto` - Modify Angular DTO and form structures (MEDIUM risk)
 - `get_git_diff` - Retrieve git diff for review (LOW risk)
 - `read_package_json` - Read and parse package.json (LOW risk)
+- `read_file` - Read a file within a registered workspace (LOW risk)
+
+Note: `read_file` is used directly by the smart review engine and is not currently exposed to the LLM planner.
 
 ## Project Structure
 
@@ -211,6 +283,7 @@ assistant-core/
 │   ├── llm/                   # LLM provider abstraction
 │   ├── tools/                 # Executable tool implementations
 │   ├── audit/                 # Execution logging
+│   ├── workspace/             # Workspace registry and metadata detection
 │   ├── features/              # Feature-specific modules
 │   │   └── git/review/        # Git diff review functionality
 │   └── types/                 # TypeScript type definitions
@@ -245,6 +318,22 @@ curl -X POST http://localhost:4000/execute \
 
 ```bash
 curl http://localhost:4000/audit/execution-uuid-from-step-3
+```
+
+1. **Register a workspace for smart reviews:**
+
+```bash
+curl -X POST http://localhost:4000/workspace/register \
+  -H "Content-Type: application/json" \
+  -d '{"id": "BOSS", "rootPath": "/path/to/repo"}'
+```
+
+1. **Run a smart review:**
+
+```bash
+curl -X POST http://localhost:4000/review-smart \
+  -H "Content-Type: application/json" \
+  -d '{"workspaceId": "BOSS"}'
 ```
 
 ## Security Considerations

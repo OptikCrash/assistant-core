@@ -148,6 +148,8 @@ curl http://localhost:4000/audit/execution-uuid-here
 
 Performs AI-powered code review of staged git changes.
 
+This is the legacy review endpoint. Use `/review-smart` for cross-file analysis and workspace-aware context.
+
 **Responsibilities:**
 
 - Retrieves staged git diff
@@ -174,6 +176,139 @@ curl -X POST http://localhost:4000/review
 ```
 
 **Note:** Currently only reviews staged changes. To review unstaged changes, stage them first with `git add`.
+
+---
+
+### [reviewSmart.ts](reviewSmart.ts)
+
+**Endpoint:** `POST /review-smart`
+
+Runs the smart review engine, which performs per-file analysis plus cross-file dependency checks.
+
+**Responsibilities:**
+
+- Validates the workspace ID
+- Loads workspace metadata for context
+- Executes the ReviewEngine pipeline
+- Returns a richer DiffReview with cross-file risks and confidence
+
+**Request Body:**
+
+```typescript
+{
+  workspaceId: string; // ID from /workspace/register
+}
+```
+
+**Response (truncated):**
+
+```typescript
+{
+  summary: string;
+  breakingChanges: string[];
+  risks: string[];
+  suggestions: string[];
+  missingTests: string[];
+  schemaConcerns: string[];
+  crossFileRisks: Array<{ message: string; risk: RiskLevel }>;
+  architecturalConcerns: Array<{ message: string; risk: RiskLevel }>;
+  overallRisk: RiskLevel;
+  confidence: number; // 0-100
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:4000/review-smart \
+  -H "Content-Type: application/json" \
+  -d '{"workspaceId": "BOSS"}'
+```
+
+---
+
+### [workspace.ts](workspace.ts)
+
+Workspace lifecycle endpoints used by tools and smart review.
+
+#### GET `/workspace`
+
+List registered workspaces.
+
+#### POST `/workspace/validate`
+
+Validate a path before registration.
+
+**Request Body:**
+
+```typescript
+{
+  rootPath: string;
+}
+```
+
+**Response:**
+
+```typescript
+{
+  exists: boolean;
+  isGitRepo: boolean;
+  hasPackageJson: boolean;
+}
+```
+
+#### POST `/workspace/register`
+
+Register a workspace for scoped tooling.
+
+**Request Body:**
+
+```typescript
+{
+  id: string;
+  rootPath: string;
+}
+```
+
+**Response:**
+
+```typescript
+{
+  id: string;
+  rootPath: string;
+  metadata: {
+    languages: string[];
+    frameworks: string[];
+    databases: string[];
+    orm: string[];
+    testFrameworks: string[];
+    packageManager?: string;
+    hasDocker: boolean;
+    defaultBranch?: string;
+  };
+}
+```
+
+#### GET `/workspace/:id/status`
+
+Runtime git status for a workspace.
+
+**Response:**
+
+```typescript
+{
+  currentBranch?: string;
+  defaultBranch?: string;
+  hasUncommittedChanges: boolean;
+  hasStagedChanges: boolean;
+  aheadBy?: number;
+  behindBy?: number;
+}
+```
+
+#### DELETE `/workspace/:id`
+
+Unregister a workspace.
 
 ## Common Patterns
 

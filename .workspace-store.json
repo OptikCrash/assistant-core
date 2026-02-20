@@ -1,0 +1,38 @@
+[
+  {
+    "id": "BOSS",
+    "rootPath": "/Users/chris/GitRepos/BOSS-Web",
+    "metadata": {
+      "languages": [
+        "TypeScript"
+      ],
+      "frameworks": [],
+      "databases": [],
+      "orm": [],
+      "testFrameworks": [],
+      "hasDocker": true,
+      "packageManager": "npm",
+      "currentBranch": "throw-away",
+      "defaultBranch": "master"
+    }
+  },
+  {
+    "id": "assistant-core",
+    "rootPath": "/Users/chris/GitRepos/assistant-core",
+    "metadata": {
+      "languages": [
+        "TypeScript"
+      ],
+      "frameworks": [
+        "Express"
+      ],
+      "databases": [],
+      "orm": [],
+      "testFrameworks": [],
+      "hasDocker": false,
+      "packageManager": "npm",
+      "currentBranch": "workspace-context",
+      "defaultBranch": "main"
+    }
+  }
+]

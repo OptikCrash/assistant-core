@@ -7,7 +7,8 @@ This feature provides AI-powered code review of git diffs with a focus on TypeSc
 The git review feature:
 
 - Retrieves git diffs (staged or compared to a branch)
-- Sends the diff to an LLM for analysis
+- Performs per-file static analysis with partial file context
+- Runs cross-file dependency checks for breaking changes
 - Returns structured feedback covering common issues and risks
 - Validates the response against a strict schema
 
@@ -17,9 +18,14 @@ This is a specialized feature separate from the general tool system, providing d
 
 ```text
 src/features/git/review/
-├── types.ts          → Type definitions for review responses
-├── prompt.ts         → LLM prompt builder with review criteria
-└── reviewService.ts  → Main review orchestration logic
+├── ReviewEngine.ts         → Smart review pipeline
+├── buildCrossFilePrompt.ts → Cross-file analysis prompt builder
+├── dependencyScanner.ts    → Import/export and dependency scanner
+├── prompt.ts               → Basic review prompt builder
+├── reviewService.ts        → Legacy staged diff review
+├── reviewSmartService.ts   → Smart review entry point
+├── smartPrompt.ts          → Per-file analysis prompt builder
+└── types.ts                → Type definitions for review responses
 ```
 
 ## Files
@@ -38,6 +44,33 @@ interface DiffReview {
   suggestions: string[];       // Improvement suggestions
   missingTests: string[];      // Areas lacking test coverage
   schemaConcerns: string[];    // Database/API schema issues
+  crossFileRisks?: StructuredIssue[];
+  architecturalConcerns?: StructuredIssue[];
+  overallRisk: RiskLevel;      // LOW | MEDIUM | HIGH | CRITICAL
+  confidence: number;          // 0-100
+  runtime?: WorkspaceRuntimeState;
+}
+```
+
+#### StructuredIssue Interface
+
+```typescript
+interface StructuredIssue {
+  message: string;
+  risk: RiskLevel;
+}
+```
+
+#### WorkspaceRuntimeState (optional)
+
+```typescript
+interface WorkspaceRuntimeState {
+  currentBranch?: string;
+  defaultBranch?: string;
+  hasUncommittedChanges: boolean;
+  hasStagedChanges: boolean;
+  aheadBy?: number;
+  behindBy?: number;
 }
 ```
 
@@ -66,7 +99,13 @@ interface DiffReview {
   schemaConcerns: [
     "Email column allows NULL - consider if this is intended",
     "No email format validation at database level"
-  ]
+  ],
+  crossFileRisks: [
+    { message: "UserDTO not updated after model change", risk: "MEDIUM" }
+  ],
+  architecturalConcerns: [],
+  overallRisk: "HIGH",
+  confidence: 78
 }
 ```
 
@@ -171,6 +210,8 @@ export function buildReviewPrompt(diff: string): string {
 
 Main orchestration logic for the review workflow.
 
+This is the legacy staged-diff reviewer. The smart review engine is documented below.
+
 #### Function: `reviewDiff(staged: boolean = true): Promise<DiffReview>`
 
 Executes the complete review workflow.
@@ -229,6 +270,65 @@ This ensures the LLM response conforms exactly to the expected structure.
 
 ---
 
+### [reviewSmartService.ts](reviewSmartService.ts)
+
+Entry point for the smart review engine.
+
+**Function:** `reviewSmartDiff(workspaceId: string)`
+
+**Process:**
+
+1. Loads the workspace from the registry
+2. Constructs a `ReviewEngine` with the workspace root
+3. Runs the smart pipeline and returns a full DiffReview
+
+**Example:**
+
+```typescript
+const review = await reviewSmartDiff("BOSS");
+```
+
+---
+
+### [ReviewEngine.ts](ReviewEngine.ts)
+
+Multi-stage review pipeline with per-file analysis and cross-file validation.
+
+**High-Level Stages:**
+
+1. **Diff Retrieval**: Uses `getGitDiffTool` with `workspaceId`
+2. **Task Preparation**: Splits diff by file, loads file context via `readFileTool`, scans dependencies
+3. **Parallel Execution**: Runs per-file reviews with token budgeting
+4. **Cross-File Analysis**: Detects breaking export changes and contract drift
+5. **Aggregation**: Produces a unified DiffReview with overall risk and confidence
+
+**Key Capabilities:**
+
+- File-level analysis on changed regions only (partial context)
+- Import/export scanning for dependency impact
+- Signature and export change tracking
+- Cross-file risk weighting and aggregation
+
+---
+
+### [smartPrompt.ts](smartPrompt.ts)
+
+Builds per-file analysis prompts that focus on concrete technical issues and avoid generic advice. The prompt emphasizes partial-file context and strict JSON output.
+
+---
+
+### [buildCrossFilePrompt.ts](buildCrossFilePrompt.ts)
+
+Generates the cross-file analysis prompt, focusing on breaking exports, signature drift, and architectural boundary violations.
+
+---
+
+### [dependencyScanner.ts](dependencyScanner.ts)
+
+Lightweight parser that extracts imports and exports to support cross-file dependency mapping and impact detection.
+
+---
+
 ## Usage
 
 ### Via API Endpoint
@@ -246,6 +346,20 @@ curl -X POST http://localhost:4000/review
   "missingTests": [...],
   "schemaConcerns": [...]
 }
+```
+
+### Smart Review (Workspace-Based)
+
+```bash
+# Register workspace
+curl -X POST http://localhost:4000/workspace/register \
+  -H "Content-Type: application/json" \
+  -d '{"id": "BOSS", "rootPath": "/path/to/repo"}'
+
+# Run smart review
+curl -X POST http://localhost:4000/review-smart \
+  -H "Content-Type: application/json" \
+  -d '{"workspaceId": "BOSS"}'
 ```
 
 ### Programmatic Usage

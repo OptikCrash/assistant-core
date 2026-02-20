@@ -22,6 +22,7 @@ Tools Module
 │
 ├── generateMigration.ts  → Database migration generation (HIGH risk)
 ├── getGitDiff.ts         → Git diff retrieval (LOW risk)
+├── readFile.ts           → Workspace-scoped file reader (LOW risk)
 ├── readPackageJson.ts    → Package.json reader (LOW risk)
 ├── readSchema.ts         → Database schema reader (LOW risk)
 ├── updateSequelizeModel.ts → Sequelize model updater (HIGH risk)
@@ -98,6 +99,8 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
 ];
 ```
 
+**Note:** The registry is the tool list exposed to the LLM for plan generation. Internal tools such as `read_file` are used directly by features like smart review and are not currently surfaced to the planner.
+
 **Important:** When adding a new tool, you must register it here for the LLM to know about it.
 
 ---
@@ -127,6 +130,8 @@ The execution engine that runs tool calls with validation.
 const result = await executeToolCall("read_schema", { table: "users" });
 // Tool validates input, executes, returns result
 ```
+
+**Implementation Note:** The current tool engine only wires `generate_migration` and `get_git_diff`. Tools like `read_schema`, `update_sequelize_model`, and `update_angular_dto` are registered but still throw "not implemented" errors in their executors.
 
 ---
 
@@ -179,6 +184,7 @@ Retrieves git diff output for code review and analysis.
 
 ```typescript
 {
+  workspaceId: string;   // Workspace ID from /workspace/register
   staged?: boolean;      // Get staged changes (git diff --staged)
   baseBranch?: string;   // Compare against branch (git diff <branch>)
 }
@@ -195,6 +201,7 @@ Retrieves git diff output for code review and analysis.
 **Implementation:**
 
 - Uses Node's `child_process.exec` to run git commands
+- Executes inside the registered workspace root
 - Supports large diffs with 10MB max buffer
 - Async execution with error handling
 
@@ -202,10 +209,50 @@ Retrieves git diff output for code review and analysis.
 
 ```typescript
 // Get staged changes
-await getGitDiffTool.execute({ staged: true });
+await getGitDiffTool.execute({ workspaceId: "BOSS", staged: true });
 
 // Compare against main branch
-await getGitDiffTool.execute({ baseBranch: "main" });
+await getGitDiffTool.execute({ workspaceId: "BOSS", baseBranch: "main" });
+```
+
+---
+
+### [readFile.ts](readFile.ts)
+
+**Risk:** LOW
+
+Reads a file within a registered workspace, with path traversal protection.
+
+**Input Schema:**
+
+```typescript
+{
+  workspaceId: string; // Workspace ID from /workspace/register
+  filePath: string;    // Path relative to workspace root
+}
+```
+
+**Output:**
+
+```typescript
+{
+  content: string;
+}
+```
+
+**Implementation:**
+
+- Resolves file path against workspace root
+- Rejects paths that escape the workspace
+- Reads the file with `fs.promises.readFile`
+
+**Example:**
+
+```typescript
+await readFileTool.execute({
+  workspaceId: "BOSS",
+  filePath: "src/features/git/review/ReviewEngine.ts"
+});
 ```
 
 ---
@@ -248,6 +295,8 @@ Reads and parses the workspace's package.json file.
 
 Reads database schema metadata (implementation not shown in workspace, but registered).
 
+**Status:** Currently throws `Tool not implemented: read_schema` when executed.
+
 **Typical Usage:**
 
 - Query database for table structure
@@ -262,6 +311,8 @@ Reads database schema metadata (implementation not shown in workspace, but regis
 
 Modifies Sequelize ORM model definitions (implementation not shown in workspace, but registered).
 
+**Status:** Currently throws `Tool not implemented: update_sequelize_model` when executed.
+
 **Why HIGH Risk:**
 
 - Changes code that affects database operations
@@ -275,6 +326,8 @@ Modifies Sequelize ORM model definitions (implementation not shown in workspace,
 **Risk:** MEDIUM
 
 Modifies Angular DTO and form structures (implementation not shown in workspace, but registered).
+
+**Status:** Currently throws `Tool not implemented: update_angular_dto` when executed.
 
 **Why MEDIUM Risk:**
 

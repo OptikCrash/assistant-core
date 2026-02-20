@@ -8,6 +8,7 @@ import { chatRouter } from './routes/chat';
 import { executeRouter } from './routes/execute';
 import { reviewRouter } from './routes/review';
 import { reviewSmartRouter } from './routes/reviewSmart';
+import { workspaceRouter } from './routes/workspace';
 
 
 const app = express();
@@ -19,6 +20,7 @@ app.use('/execute', executeRouter);
 app.use('/audit', auditRouter);
 app.use('/review', reviewRouter);
 app.use('/review-smart', reviewSmartRouter);
+app.use('/workspace', workspaceRouter);
 
 const PORT = 4000;
 app.listen(PORT, () => {
