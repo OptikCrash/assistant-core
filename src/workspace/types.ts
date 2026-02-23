@@ -16,10 +16,15 @@ export interface WorkspaceRuntimeState {
     hasStagedChanges: boolean;
     aheadBy?: number;
     behindBy?: number;
+    dirty: boolean;
+    untrackedFiles: number;
+    lastCommitHash: string;
+    lastCommitDate: string;
 }
 
 export interface WorkspaceContext {
     id: string;
     rootPath: string;
-    metadata: WorkspaceStaticMetadata;
+    metadata: WorkspaceStaticMetadata;     // static
+    runtime?: WorkspaceRuntimeState; // refreshable
 }

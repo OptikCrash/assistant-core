@@ -3,6 +3,10 @@ import fs from "fs";
 import path from "path";
 import { detectWorkspaceRuntime } from "../workspace/runtimeDetector";
 import {
+    getWorkspaceIndex,
+    refreshWorkspaceIndex
+} from "../workspace/workspaceIndexer";
+import {
     getWorkspace,
     listWorkspaces,
     registerWorkspace,
@@ -23,6 +27,10 @@ workspaceRouter.get("/", async (req, res) => {
     }
 });
 
+workspaceRouter.get("/:id", async (req, res) => {
+    const workspace = await getWorkspace(req.params.id);
+    res.json(workspace);
+});
 /**
  * DELETE /workspace/:id
  */
@@ -46,6 +54,25 @@ workspaceRouter.get("/:id/status", async (req, res) => {
 
         res.json(runtime);
 
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * POST /workspace/:id/runtime/refresh
+ */
+workspaceRouter.post("/:id/runtime/refresh", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const workspace = await getWorkspace(id);
+
+        const runtime = detectWorkspaceRuntime(workspace.rootPath);
+        // attach runtime (do NOT persist static metadata)
+        workspace.runtime = runtime;
+
+        res.json(runtime);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -91,5 +118,42 @@ workspaceRouter.post("/register", async (req, res) => {
         res.json(workspace);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * GET /workspace/:id/index
+ */
+workspaceRouter.get("/:id/index", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        let index = getWorkspaceIndex(id);
+
+        if (!index) {
+            index = await refreshWorkspaceIndex(id);
+        }
+
+        res.json(index);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * POST /workspace/:id/index/refresh
+ */
+workspaceRouter.post("/:id/index/refresh", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const depth = req.body?.depth ?? 5;
+
+        const index = await refreshWorkspaceIndex(id, depth);
+
+        res.json(index);
+    } catch (err: any) {
+        res.status(500).json({
+            error: err.message
+        });
     }
 });
