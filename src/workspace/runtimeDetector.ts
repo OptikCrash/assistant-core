@@ -1,31 +1,30 @@
 import { execSync } from "child_process";
 import { WorkspaceRuntimeState } from "./types";
 
+function safeExec(command: string, cwd: string): string | undefined {
+    try {
+        return execSync(command, { cwd }).toString().trim();
+    } catch {
+        return undefined;
+    }
+}
+
 export function detectWorkspaceRuntime(
     rootPath: string
 ): WorkspaceRuntimeState {
 
-    const safeExec = (command: string): string => {
-        try {
-            return execSync(command, { cwd: rootPath })
-                .toString()
-                .trim();
-        } catch {
-            return "";
-        }
-    };
-
     // --- Branch ---
     let currentBranch =
-        safeExec("git rev-parse --abbrev-ref HEAD") || "unknown";
+        safeExec("git rev-parse --abbrev-ref HEAD", rootPath) ?? "unknown";
 
     if (currentBranch === "HEAD") {
-        currentBranch = safeExec("git describe --all");
+        currentBranch = safeExec("git describe --all", rootPath) ?? "unknown";
     }
     // --- Default branch ---
     let defaultBranch = "main";
     const symbolic = safeExec(
-        "git symbolic-ref refs/remotes/origin/HEAD"
+        "git symbolic-ref refs/remotes/origin/HEAD",
+        rootPath
     );
 
     if (symbolic) {
@@ -40,7 +39,8 @@ export function detectWorkspaceRuntime(
     let behindBy = 0;
 
     const aheadBehind = safeExec(
-        `git rev-list --left-right --count ${defaultBranch}...HEAD`
+        `git rev-list --left-right --count ${defaultBranch}...HEAD`,
+        rootPath
     );
 
     if (aheadBehind) {
@@ -56,7 +56,7 @@ export function detectWorkspaceRuntime(
     let hasUncommittedChanges = false;
     let untrackedFiles = 0;
 
-    const status = safeExec("git status --porcelain");
+    const status = safeExec("git status --porcelain", rootPath);
 
     if (status) {
         const lines = status.split("\n").filter(Boolean);
@@ -96,11 +96,12 @@ export function detectWorkspaceRuntime(
         untrackedFiles > 0;
 
     // --- Last commit ---
-    const lastCommitHash = safeExec("git rev-parse HEAD");
+    const lastCommitHash = safeExec("git rev-parse HEAD", rootPath) ?? "";
 
     const lastCommitDate = safeExec(
-        "git log -1 --format=%cd --date=iso"
-    );
+        "git log -1 --format=%cd --date=iso",
+        rootPath
+    ) ?? "";
 
     return {
         currentBranch,

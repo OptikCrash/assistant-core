@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { FileWorkspaceStore } from "./fileWorkspaceStore";
 import { detectWorkspaceMetadata } from "./metadataDetector";
-import { WorkspaceContext } from "./types";
+import { WorkspaceContext, WorkspaceRuntimeState } from "./types";
 
 const store = new FileWorkspaceStore();
 
@@ -50,4 +50,8 @@ export async function listWorkspaces(): Promise<WorkspaceContext[]> {
 
 export async function unregisterWorkspace(id: string): Promise<void> {
     await store.remove(id);
+}
+
+export async function updateWorkspaceRuntime(id: string, runtime: WorkspaceRuntimeState): Promise<WorkspaceContext> {
+    return store.update(id, { runtime });
 }

@@ -1,11 +1,15 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
+import { resolveSafePathAsync, resolveWorkspacePath } from "./pathUtils";
 import { Tool } from "./types";
 
 const ReadFileSchema = z.object({
-    rootPath: z.string(),
+    workspaceId: z.string().optional(),
+    rootPath: z.string().optional(), // Legacy support
     filePath: z.string()
+}).refine(data => data.workspaceId || data.rootPath, {
+    message: "Either workspaceId or rootPath must be provided"
 });
 
 type ReadFileInput = z.infer<typeof ReadFileSchema>;
@@ -16,15 +20,12 @@ export const readFileTool: Tool<ReadFileInput> = {
     schema: ReadFileSchema,
 
     async execute(input) {
+        // Support both workspaceId and legacy rootPath
+        const rootPath = input.workspaceId
+            ? await resolveWorkspacePath(input.workspaceId)
+            : path.resolve(input.rootPath!);
 
-        const absolutePath = path.resolve(
-            input.rootPath,
-            input.filePath
-        );
-
-        if (!absolutePath.startsWith(path.resolve(input.rootPath))) {
-            throw new Error("File path escapes workspace root");
-        }
+        const absolutePath = await resolveSafePathAsync(rootPath, input.filePath);
 
         const stat = await fs.stat(absolutePath);
 

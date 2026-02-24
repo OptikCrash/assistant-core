@@ -1,14 +1,19 @@
 import { exec } from 'child_process';
+import path from 'path';
 import { promisify } from 'util';
 import { z } from 'zod';
+import { resolveWorkspacePath } from './pathUtils';
 import { Tool } from './types';
 
 const execAsync = promisify(exec);
 
 const GetGitDiffSchema = z.object({
-    rootPath: z.string(),
+    workspaceId: z.string().optional(),
+    rootPath: z.string().optional(), // Legacy support
     staged: z.boolean().optional(),
     baseBranch: z.string().optional()
+}).refine(data => data.workspaceId || data.rootPath, {
+    message: "Either workspaceId or rootPath must be provided"
 });
 
 type GetGitDiffInput = z.infer<typeof GetGitDiffSchema>;
@@ -19,7 +24,12 @@ export const getGitDiffTool: Tool<GetGitDiffInput> = {
     schema: GetGitDiffSchema,
 
     async execute(input) {
-        const { rootPath, staged, baseBranch } = input;
+        // Support both workspaceId and legacy rootPath
+        const rootPath = input.workspaceId
+            ? await resolveWorkspacePath(input.workspaceId)
+            : path.resolve(input.rootPath!);
+
+        const { staged, baseBranch } = input;
 
         let command = "git diff";
 

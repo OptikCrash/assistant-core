@@ -1,7 +1,17 @@
 import fs from "fs";
+import micromatch from "micromatch";
 import path from "path";
 
-let assistantIgnoreCache: string[] | null = null;
+// Per-workspace cache for parsed ignore rules
+const ignoreCache = new Map<string, string[]>();
+
+export const DEFAULT_EXCLUDES = [
+    ".git",
+    "node_modules",
+    ".DS_Store",
+    "dist",
+    "build"
+];
 
 const SOURCE_EXTENSIONS = new Set([
     ".ts",
@@ -32,14 +42,28 @@ const SENSITIVE_FILES = [
 
 export function shouldIndexFile(
     filePath: string,
-    type: "file" | "directory"
+    type: "file" | "directory",
+    rootPath?: string
 ): boolean {
 
-    // Directory exclusion
+    // Path segment exclusion (directories in path)
     const parts = filePath.split("/");
 
     if (parts.some(p => EXCLUDED_DIRECTORIES.has(p))) {
         return false;
+    }
+
+    // DEFAULT_EXCLUDES check (exact segment match for any part of path)
+    if (parts.some(p => DEFAULT_EXCLUDES.includes(p))) {
+        return false;
+    }
+
+    // Check .assistantignore glob patterns
+    if (rootPath) {
+        const ignorePatterns = loadAssistantIgnore(rootPath);
+        if (ignorePatterns.length > 0 && micromatch.isMatch(filePath, ignorePatterns, { dot: true })) {
+            return false;
+        }
     }
 
     if (type === "directory") {
@@ -57,20 +81,30 @@ export function shouldIndexFile(
 }
 
 export function loadAssistantIgnore(rootPath: string): string[] {
-    if (assistantIgnoreCache) return assistantIgnoreCache;
+    const cached = ignoreCache.get(rootPath);
+    if (cached) return cached;
 
     const ignorePath = path.join(rootPath, ".assistantignore");
 
     if (!fs.existsSync(ignorePath)) {
-        assistantIgnoreCache = [];
+        ignoreCache.set(rootPath, []);
         return [];
     }
 
-    assistantIgnoreCache = fs
+    const patterns = fs
         .readFileSync(ignorePath, "utf-8")
         .split("\n")
         .map(line => line.trim())
-        .filter(Boolean);
+        .filter(line => line && !line.startsWith("#")); // Filter empty lines and comments
 
-    return assistantIgnoreCache;
+    ignoreCache.set(rootPath, patterns);
+    return patterns;
+}
+
+export function clearIgnoreCache(rootPath?: string): void {
+    if (rootPath) {
+        ignoreCache.delete(rootPath);
+    } else {
+        ignoreCache.clear();
+    }
 }

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
+import { requireWorkspace } from "../middleware/requireWorkspace";
+import { WorkspaceService } from "../services/WorkspaceService";
 import { detectWorkspaceRuntime } from "../workspace/runtimeDetector";
 import {
     getWorkspaceIndex,
@@ -9,11 +11,11 @@ import {
 import {
     getWorkspace,
     listWorkspaces,
-    registerWorkspace,
     unregisterWorkspace
 } from "../workspace/workspaceRegistry";
 
 export const workspaceRouter = Router();
+const service = new WorkspaceService();
 
 /**
  * GET /workspace
@@ -27,14 +29,14 @@ workspaceRouter.get("/", async (req, res) => {
     }
 });
 
-workspaceRouter.get("/:id", async (req, res) => {
+workspaceRouter.get("/:id", requireWorkspace, async (req, res) => {
     const workspace = await getWorkspace(req.params.id);
     res.json(workspace);
 });
 /**
  * DELETE /workspace/:id
  */
-workspaceRouter.delete("/:id", async (req, res) => {
+workspaceRouter.delete("/:id", requireWorkspace, async (req, res) => {
     try {
         await unregisterWorkspace(req.params.id);
         res.json({ success: true });
@@ -46,7 +48,7 @@ workspaceRouter.delete("/:id", async (req, res) => {
 /**
  * GET /workspace/:id/status
  */
-workspaceRouter.get("/:id/status", async (req, res) => {
+workspaceRouter.get("/:id/status", requireWorkspace, async (req, res) => {
     try {
         const workspace = await getWorkspace(req.params.id);
 
@@ -62,7 +64,7 @@ workspaceRouter.get("/:id/status", async (req, res) => {
 /**
  * POST /workspace/:id/runtime/refresh
  */
-workspaceRouter.post("/:id/runtime/refresh", async (req, res) => {
+workspaceRouter.post("/:id/runtime/refresh", requireWorkspace, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -73,6 +75,37 @@ workspaceRouter.post("/:id/runtime/refresh", async (req, res) => {
         workspace.runtime = runtime;
 
         res.json(runtime);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * GET /workspace/:id/runtime
+ */
+workspaceRouter.get("/:id/runtime", requireWorkspace, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const workspace = await getWorkspace(id);
+
+        // Return cached runtime if available, otherwise detect fresh
+        const runtime = workspace.runtime ?? detectWorkspaceRuntime(workspace.rootPath);
+
+        res.json(runtime);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * GET /workspace/:id/metadata
+ */
+workspaceRouter.get("/:id/metadata", requireWorkspace, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const workspace = await getWorkspace(id);
+
+        res.json(workspace.metadata);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -106,25 +139,14 @@ workspaceRouter.post("/validate", async (req, res) => {
  */
 workspaceRouter.post("/register", async (req, res) => {
     const { id, rootPath } = req.body;
-
-    if (!id || !rootPath) {
-        return res.status(400).json({
-            error: "id and rootPath are required"
-        });
-    }
-
-    try {
-        const workspace = await registerWorkspace(id, rootPath);
-        res.json(workspace);
-    } catch (err: any) {
-        res.status(500).json({ error: err.message });
-    }
+    const result = await service.register(id, rootPath);
+    res.json(result);
 });
 
 /**
  * GET /workspace/:id/index
  */
-workspaceRouter.get("/:id/index", async (req, res) => {
+workspaceRouter.get("/:id/index", requireWorkspace, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -143,7 +165,7 @@ workspaceRouter.get("/:id/index", async (req, res) => {
 /**
  * POST /workspace/:id/index/refresh
  */
-workspaceRouter.post("/:id/index/refresh", async (req, res) => {
+workspaceRouter.post("/:id/index/refresh", requireWorkspace, async (req, res) => {
     try {
         const { id } = req.params;
         const depth = req.body?.depth ?? 5;

@@ -1,10 +1,10 @@
 import fs from "fs/promises";
-import path from "path";
 import { z } from "zod";
+import { resolveSafePathAsync, resolveWorkspacePath } from "./pathUtils";
 import { Tool } from "./types";
 
 const ReadPackageJsonSchema = z.object({
-    workspacePath: z.string()
+    workspaceId: z.string()
 });
 
 type ReadPackageJsonInput = z.infer<typeof ReadPackageJsonSchema>;
@@ -14,8 +14,9 @@ export const readPackageJsonTool: Tool<ReadPackageJsonInput> = {
     risk: "LOW",
     schema: ReadPackageJsonSchema,
 
-    async execute({ workspacePath }) {
-        const filePath = path.join(workspacePath, "package.json");
+    async execute({ workspaceId }) {
+        const rootPath = await resolveWorkspacePath(workspaceId);
+        const filePath = await resolveSafePathAsync(rootPath, "package.json");
         const content = await fs.readFile(filePath, "utf-8");
         return JSON.parse(content);
     }
