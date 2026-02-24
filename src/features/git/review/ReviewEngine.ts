@@ -2,6 +2,7 @@ import { LLMProvider } from "../../../llm/types";
 import { getGitDiffTool } from "../../../tools/getGitDiff";
 import { readFileTool } from "../../../tools/readFile";
 import { RiskLevel } from "../../../tools/types";
+import { detectWorkspaceRuntime } from "../../../workspace/workspaceRuntimeDetector";
 import { buildSmartFilePrompt } from "./smartPrompt";
 import { DiffReview, FileReview, ImportSpec, StructuredIssue } from "./types";
 
@@ -46,10 +47,12 @@ export class ReviewEngine {
     }
 
     constructor(
-        private provider: LLMProvider
+        private provider: LLMProvider,
+        private workspaceRoot: string
     ) { }
 
     async run(): Promise<DiffReview> {
+        const runtime = detectWorkspaceRuntime(this.workspaceRoot);
         const diff = await this.getDiff();
 
         if (!diff || diff.trim().length === 0) {
@@ -69,7 +72,11 @@ export class ReviewEngine {
 
     //#region Stage 1 — Diff Retrieval
     private async getDiff(): Promise<string> {
-        const result = await getGitDiffTool.execute({ staged: true });
+        const result = await getGitDiffTool.execute({
+            rootPath: this.workspaceRoot,
+            staged: true
+        });
+
         return result.diff;
     }
     //#endregion
@@ -96,6 +103,7 @@ export class ReviewEngine {
         let fullFileContent = "";
         try {
             const fileResult = await readFileTool.execute({
+                rootPath: this.workspaceRoot,
                 filePath: filename
             });
             fullFileContent = fileResult.content;
@@ -323,7 +331,7 @@ export class ReviewEngine {
             architecturalConcerns: StructuredIssue[];
         }
     ): DiffReview {
-
+        const runtime = detectWorkspaceRuntime(this.workspaceRoot);
         const crossFileRisks = crossFile?.crossFileRisks ?? [];
         const architecturalConcerns = crossFile?.architecturalConcerns ?? [];
 
@@ -348,12 +356,11 @@ export class ReviewEngine {
             suggestions: fileReviews.flatMap(r => r.review.suggestions),
             missingTests: fileReviews.flatMap(r => r.review.missingTests),
             schemaConcerns: fileReviews.flatMap(r => r.review.schemaConcerns),
-
             crossFileRisks,
             architecturalConcerns,
-
             overallRisk,
-            confidence
+            confidence,
+            runtime
         };
     }
 

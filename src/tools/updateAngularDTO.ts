@@ -2,16 +2,19 @@ import { z } from "zod";
 import { Tool } from "./types";
 
 const UpdateAngularDtoSchema = z.object({
+    workspaceId: z.string(),
     dtoName: z.string(),
     properties: z.array(z.any())
 });
 
-export const updateAngularDtoTool: Tool<any> = {
+type UpdateAngularDtoInput = z.infer<typeof UpdateAngularDtoSchema>;
+
+export const updateAngularDtoTool: Tool<UpdateAngularDtoInput> = {
     name: "update_angular_dto",
     risk: "MEDIUM",
     schema: UpdateAngularDtoSchema,
 
     async execute() {
-        throw new Error("Tool not implemented: update_angular_dto");
+        throw new Error("NOT_IMPLEMENTED: update_angular_dto");
     }
 };

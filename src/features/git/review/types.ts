@@ -1,4 +1,5 @@
 import { RiskLevel } from "../../../tools/types";
+import { WorkspaceRuntimeState } from "../../../workspace/types";
 
 export interface StructuredIssue {
     message: string;
@@ -16,6 +17,7 @@ export interface DiffReview {
     architecturalConcerns?: StructuredIssue[];
     overallRisk: RiskLevel;
     confidence: number; // 0-100
+    runtime?: WorkspaceRuntimeState;
 }
 
 export interface FileReview {
