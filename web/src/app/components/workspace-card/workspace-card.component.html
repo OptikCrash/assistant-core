@@ -1,0 +1,97 @@
+<mat-card class="workspace-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar class="workspace-icon">folder</mat-icon>
+    <mat-card-title>{{ workspace().id }}</mat-card-title>
+    <mat-card-subtitle>{{ workspace().rootPath }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- Runtime Status -->
+    @if (workspace().runtime) {
+      <div class="runtime-status">
+        <div class="branch-info">
+          <app-octicon
+            [icon]="icons.branch"
+            [size]="18"
+            [color]="branchStatusColor"
+          />
+          <span class="branch-name">{{
+            workspace().runtime?.currentBranch
+          }}</span>
+          @if (syncStatus) {
+            <span class="sync-status">{{ syncStatus }}</span>
+          }
+        </div>
+
+        @if (workspace().runtime?.dirty) {
+          <div class="dirty-info">
+            @if (workspace().runtime?.hasUncommittedChanges) {
+              <span class="uncommitted" matTooltip="Uncommitted changes">
+                <app-octicon
+                  [icon]="icons.diffModified"
+                  [size]="16"
+                  color="#ff9800"
+                />
+              </span>
+            }
+            @if (workspace().runtime?.hasStagedChanges) {
+              <span class="staged" matTooltip="Staged changes">
+                <app-octicon
+                  [icon]="icons.diffAdded"
+                  [size]="16"
+                  color="#4caf50"
+                />
+              </span>
+            }
+            @if (
+              workspace().runtime && workspace().runtime!.untrackedFiles > 0
+            ) {
+              <span class="untracked" matTooltip="Untracked files">
+                <app-octicon
+                  [icon]="icons.fileAdded"
+                  [size]="16"
+                  color="#9e9e9e"
+                />
+                {{ workspace().runtime?.untrackedFiles }}
+              </span>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="no-runtime">
+        <app-octicon [icon]="icons.alert" [size]="18" color="#9e9e9e" />
+        <span>Runtime not loaded</span>
+      </div>
+    }
+
+    <!-- Metadata Badges -->
+    @if (workspace().metadata) {
+      <div class="tech-badges">
+        @for (lang of workspace().metadata.languages; track lang) {
+          <app-tech-badge [tech]="lang" />
+        }
+        @for (fw of workspace().metadata.frameworks; track fw) {
+          <app-tech-badge [tech]="fw" />
+        }
+      </div>
+    }
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-icon-button (click)="onRefresh()" matTooltip="Refresh runtime">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-icon-button (click)="onViewDetails()" matTooltip="View details">
+      <mat-icon>open_in_new</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      (click)="onDelete()"
+      matTooltip="Remove workspace"
+      color="warn"
+    >
+      <mat-icon>delete</mat-icon>
+    </button>
+  </mat-card-actions>
+</mat-card>

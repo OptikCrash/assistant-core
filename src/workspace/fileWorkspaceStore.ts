@@ -41,7 +41,7 @@ export class FileWorkspaceStore implements WorkspaceStore {
 
     async remove(id: string): Promise<void> {
         const list = await this.readAll();
-        await this.writeAll(list.filter(w => w.id === id));
+        await this.writeAll(list.filter(w => w.id !== id));
     }
 
     async update(id: string, patch: Partial<WorkspaceContext>): Promise<WorkspaceContext> {

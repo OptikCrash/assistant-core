@@ -15,3 +15,9 @@ export interface Tool<TInput = unknown> {
     schema: ZodType<TInput>;
     execute(input: TInput): Promise<any>;
 }
+
+export type ToolCallContext = {
+    source: "external" | "internal";
+};
+
+export type CandidatePath = Array<{ key: string; value: string }>;

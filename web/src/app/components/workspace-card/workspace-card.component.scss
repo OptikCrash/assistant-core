@@ -1,0 +1,80 @@
+.workspace-card {
+  width: 100%;
+  max-width: 400px;
+
+  .workspace-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: var(--primary-color);
+  }
+
+  mat-card-subtitle {
+    font-family: monospace;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+  }
+}
+
+.runtime-status {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--runtime-bg);
+  border-radius: 8px;
+
+  .branch-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .branch-name {
+      font-weight: 500;
+      font-family: monospace;
+    }
+
+    .sync-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+  }
+
+  .dirty-info {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.no-runtime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.tech-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+mat-card-actions {
+  border-top: 1px solid var(--border-color);
+}

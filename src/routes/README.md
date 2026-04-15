@@ -44,7 +44,7 @@ Handles natural language requests and converts them into structured task plans u
 **Example:**
 
 ```bash
-curl -X POST http://localhost:4000/chat \
+curl -X POST http://localhost:1339/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Add validation to the user email field"}'
 ```
@@ -101,7 +101,7 @@ Executes a previously generated plan with proper risk validation and approval ch
 **Example:**
 
 ```bash
-curl -X POST http://localhost:4000/execute \
+curl -X POST http://localhost:1339/execute \
   -H "Content-Type: application/json" \
   -d '{"planId": "abc-123", "confirmRisk": true}'
 ```
@@ -137,7 +137,7 @@ Retrieves execution logs for a specific execution, providing full audit trail in
 **Example:**
 
 ```bash
-curl http://localhost:4000/audit/execution-uuid-here
+curl http://localhost:1339/audit/execution-uuid-here
 ```
 
 ---
@@ -172,7 +172,7 @@ This is the legacy review endpoint. Use `/review-smart` for cross-file analysis 
 **Example:**
 
 ```bash
-curl -X POST http://localhost:4000/review
+curl -X POST http://localhost:1339/review
 ```
 
 **Note:** Currently only reviews staged changes. To review unstaged changes, stage them first with `git add`.
@@ -220,7 +220,7 @@ Runs the smart review engine, which performs per-file analysis plus cross-file d
 **Example:**
 
 ```bash
-curl -X POST http://localhost:4000/review-smart \
+curl -X POST http://localhost:1339/review-smart \
   -H "Content-Type: application/json" \
   -d '{"workspaceId": "BOSS"}'
 ```

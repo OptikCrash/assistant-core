@@ -1,0 +1,259 @@
+<div class="workspace-detail-page">
+  <mat-toolbar color="primary">
+    <button mat-icon-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>{{ workspace()?.id ?? "Workspace" }}</span>
+    <span class="spacer"></span>
+    <button
+      mat-icon-button
+      (click)="chatSidebarService.toggle()"
+      [matTooltip]="
+        chatSidebarService.isOpen() ? 'Close Assistant' : 'Open Assistant'
+      "
+    >
+      <mat-icon>{{
+        chatSidebarService.isOpen() ? "chat" : "smart_toy"
+      }}</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      (click)="themeService.toggle()"
+      [matTooltip]="
+        themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+      "
+    >
+      <mat-icon>{{
+        themeService.isDark() ? "light_mode" : "dark_mode"
+      }}</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      (click)="refreshRuntime()"
+      matTooltip="Refresh runtime"
+    >
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else if (workspace()) {
+    <div class="content">
+      <div class="info-section">
+        <!-- Path Card -->
+        <mat-card>
+          <mat-card-header>
+            <mat-icon mat-card-avatar>folder</mat-icon>
+            <mat-card-title>Path</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <code class="path">{{ workspace()?.rootPath }}</code>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Runtime Card -->
+        <mat-card>
+          <mat-card-header>
+            <span class="card-avatar">
+              <app-octicon
+                [icon]="icons.branch"
+                [size]="24"
+                color="var(--primary-color)"
+              />
+            </span>
+            <mat-card-title>Runtime Status</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (workspace()?.runtime) {
+              <div class="runtime-grid">
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.branch" [size]="14" />
+                    Branch</span
+                  >
+                  <span class="value">{{
+                    workspace()?.runtime?.currentBranch
+                  }}</span>
+                </div>
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.commit" [size]="14" /> Last
+                    Commit</span
+                  >
+                  <span class="value mono">{{
+                    workspace()?.runtime?.lastCommitHash?.slice(0, 8)
+                  }}</span>
+                </div>
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.diffModified" [size]="14" />
+                    Dirty</span
+                  >
+                  <span
+                    class="value"
+                    [class.warn]="workspace()?.runtime?.dirty"
+                  >
+                    {{ workspace()?.runtime?.dirty ? "Yes" : "No" }}
+                  </span>
+                </div>
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.diff" [size]="14" />
+                    Uncommitted</span
+                  >
+                  <span class="value">{{
+                    workspace()?.runtime?.hasUncommittedChanges ? "Yes" : "No"
+                  }}</span>
+                </div>
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.diffAdded" [size]="14" />
+                    Staged</span
+                  >
+                  <span class="value">{{
+                    workspace()?.runtime?.hasStagedChanges ? "Yes" : "No"
+                  }}</span>
+                </div>
+                <div class="runtime-item">
+                  <span class="label"
+                    ><app-octicon [icon]="icons.fileAdded" [size]="14" />
+                    Untracked</span
+                  >
+                  <span class="value">{{
+                    workspace()?.runtime?.untrackedFiles ?? 0
+                  }}</span>
+                </div>
+              </div>
+            } @else {
+              <p class="no-data">Runtime not loaded</p>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Metadata Card -->
+        <mat-card>
+          <mat-card-header>
+            <mat-icon mat-card-avatar>info</mat-icon>
+            <mat-card-title>Metadata</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (workspace()?.metadata) {
+              <div class="metadata-section">
+                <h4>Languages</h4>
+                <div class="tech-badges">
+                  @for (lang of workspace()?.metadata?.languages; track lang) {
+                    <app-tech-badge [tech]="lang" />
+                  }
+                </div>
+              </div>
+
+              <div class="metadata-section">
+                <h4>Frameworks</h4>
+                <div class="tech-badges">
+                  @for (fw of workspace()?.metadata?.frameworks; track fw) {
+                    <app-tech-badge [tech]="fw" />
+                  }
+                </div>
+              </div>
+
+              @if (workspace()?.metadata?.databases?.length) {
+                <div class="metadata-section">
+                  <h4>Databases</h4>
+                  <div class="tech-badges">
+                    @for (db of workspace()?.metadata?.databases; track db) {
+                      <app-tech-badge [tech]="db" />
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (workspace()?.metadata?.orm?.length) {
+                <div class="metadata-section">
+                  <h4>ORM</h4>
+                  <div class="tech-badges">
+                    @for (orm of workspace()?.metadata?.orm; track orm) {
+                      <app-tech-badge [tech]="orm" />
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (workspace()?.metadata?.testFrameworks?.length) {
+                <div class="metadata-section">
+                  <h4>Test Frameworks</h4>
+                  <div class="tech-badges">
+                    @for (
+                      tf of workspace()?.metadata?.testFrameworks;
+                      track tf
+                    ) {
+                      <app-tech-badge [tech]="tf" />
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="metadata-flags">
+                @if (workspace()?.metadata?.hasDocker) {
+                  <app-tech-badge tech="Docker" />
+                }
+                @if (workspace()?.metadata?.packageManager) {
+                  <app-tech-badge
+                    [tech]="workspace()?.metadata?.packageManager ?? ''"
+                  />
+                }
+              </div>
+            } @else {
+              <p class="no-data">No metadata available</p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- File Index Section -->
+      <mat-card class="index-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>folder_open</mat-icon>
+          <mat-card-title>File Index</mat-card-title>
+          <button mat-icon-button (click)="refreshIndex()" class="refresh-btn">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          @if (indexLoading()) {
+            <div class="index-loading">
+              <mat-spinner diameter="32"></mat-spinner>
+            </div>
+          } @else if (index()) {
+            <div class="index-meta">
+              <span>{{ index()?.files?.length ?? 0 }} files</span>
+              <span>Indexed: {{ index()?.indexedAt | date: "short" }}</span>
+            </div>
+            <mat-list class="file-list">
+              @for (file of index()?.files?.slice(0, 50); track file.path) {
+                <mat-list-item>
+                  <mat-icon matListItemIcon>{{
+                    getFileIcon(file.type)
+                  }}</mat-icon>
+                  <span matListItemTitle class="file-path">{{
+                    file.path
+                  }}</span>
+                  <span matListItemMeta>{{ file.size }} bytes</span>
+                </mat-list-item>
+              }
+            </mat-list>
+            @if ((index()?.files?.length ?? 0) > 50) {
+              <p class="more-files">
+                ... and {{ (index()?.files?.length ?? 0) - 50 }} more files
+              </p>
+            }
+          } @else {
+            <p class="no-data">Index not available. Click refresh to index.</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+</div>

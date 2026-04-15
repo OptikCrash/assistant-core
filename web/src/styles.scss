@@ -1,0 +1,237 @@
+// Custom Theming for Angular Material
+// For more information: https://material.angular.io/guide/theming
+@use "@angular/material" as mat;
+
+// Include the common styles for Angular Material.
+@include mat.core();
+
+// Custom WDFW color palettes
+$wdfw-green: (
+  50: #e1efea,
+  100: #b3d7cc,
+  200: #80bdaa,
+  300: #4da387,
+  400: #278f6e,
+  500: #017b54,
+  600: #01734d,
+  700: #016843,
+  800: #015e3a,
+  900: #004b29,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: white,
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  ),
+);
+
+$wdfw-navy: (
+  50: #e3f0f5,
+  100: #bad9e7,
+  200: #92c2d9,
+  300: #6eaac9,
+  400: #549ac0,
+  500: #3c8ab7,
+  600: #327eac,
+  700: #266d9b,
+  800: #1d5d8a,
+  900: #0f426b,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: white,
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  ),
+);
+
+$wdfw-rust: (
+  50: #f7eee9,
+  100: #ecd4c8,
+  200: #dfb7a3,
+  300: #d29a7e,
+  400: #c88462,
+  500: #be6e46,
+  600: #b8663f,
+  700: #af5b37,
+  800: #a7512f,
+  900: #993f20,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  ),
+);
+
+$wdfw-red: (
+  50: #f9e4e5,
+  100: #f0bcbf,
+  200: #e79094,
+  300: #dd6369,
+  400: #d54149,
+  500: #ce2029,
+  600: #c91c24,
+  700: #c2181f,
+  800: #bc1319,
+  900: #b00b0f,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: white,
+    400: white,
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  ),
+);
+
+$wdfw-putty: (
+  50: #ebebe9,
+  100: #cdcdc9,
+  200: #acaca5,
+  300: #8b8b80,
+  400: #727265,
+  500: #59594a,
+  600: #515143,
+  700: #48483a,
+  800: #3e3e32,
+  900: #2e2e22,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: white,
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  ),
+);
+
+$wdfw-yellow: (
+  50: #fff9e6,
+  100: #fff1c0,
+  200: #ffe896,
+  300: #ffdf6b,
+  400: #ffd84c,
+  500: #ffd12c,
+  600: #ffcc27,
+  700: #ffc621,
+  800: #ffc01b,
+  900: #ffb510,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: rgba(0, 0, 0, 0.87),
+    600: rgba(0, 0, 0, 0.87),
+    700: rgba(0, 0, 0, 0.87),
+    800: rgba(0, 0, 0, 0.87),
+    900: rgba(0, 0, 0, 0.87),
+  ),
+);
+
+// Define palettes
+$web-primary: mat.define-palette($wdfw-green);
+$web-accent: mat.define-palette($wdfw-yellow);
+$web-warn: mat.define-palette($wdfw-red);
+
+// Light theme
+$web-light-theme: mat.define-light-theme(
+  (
+    color: (
+      primary: $web-primary,
+      accent: $web-accent,
+      warn: $web-warn,
+    ),
+    typography: mat.define-typography-config(),
+    density: 0,
+  )
+);
+
+// Dark theme
+$web-dark-theme: mat.define-dark-theme(
+  (
+    color: (
+      primary: $web-primary,
+      accent: $web-accent,
+      warn: $web-warn,
+    ),
+    typography: mat.define-typography-config(),
+    density: 0,
+  )
+);
+
+// Apply light theme by default
+@include mat.all-component-themes($web-light-theme);
+
+// Apply dark theme when .dark-theme class is present
+.dark-theme {
+  @include mat.all-component-colors($web-dark-theme);
+}
+
+/* Global styles */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+// Light theme custom variables
+body {
+  --bg-surface: #fafafa;
+  --bg-card: #ffffff;
+  --text-primary: rgba(0, 0, 0, 0.87);
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --border-color: #e0e0e0;
+  --runtime-bg: #e1efea;
+  --primary-color: #017b54;
+  --accent-color: #ffd12c;
+}
+
+// Dark theme custom variables
+body.dark-theme {
+  --bg-surface: #1a1a1a;
+  --bg-card: #242424;
+  --text-primary: rgba(255, 255, 255, 0.87);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --border-color: #3e3e32;
+  --runtime-bg: #2e2e22;
+  --primary-color: #4da387;
+  --accent-color: #ffe896;
+
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}

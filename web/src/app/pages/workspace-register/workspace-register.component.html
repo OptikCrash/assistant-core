@@ -1,0 +1,120 @@
+<div class="workspace-register-page">
+  <mat-toolbar color="primary">
+    <button mat-icon-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>Add Workspace</span>
+    <span class="spacer"></span>
+    <button
+      mat-icon-button
+      (click)="chatSidebarService.toggle()"
+      [matTooltip]="
+        chatSidebarService.isOpen() ? 'Close Assistant' : 'Open Assistant'
+      "
+    >
+      <mat-icon>{{
+        chatSidebarService.isOpen() ? "chat" : "smart_toy"
+      }}</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      (click)="themeService.toggle()"
+      [matTooltip]="
+        themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+      "
+    >
+      <mat-icon>{{
+        themeService.isDark() ? "light_mode" : "dark_mode"
+      }}</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <div class="content">
+    <mat-card class="register-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>add_circle</mat-icon>
+        <mat-card-title>Register New Workspace</mat-card-title>
+        <mat-card-subtitle>Add a project directory to manage</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="form-fields">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Root Path</mat-label>
+            <input
+              matInput
+              [(ngModel)]="rootPath"
+              placeholder="/path/to/your/project"
+              (blur)="validatePath()"
+            />
+            <mat-hint>Absolute path to the project root directory</mat-hint>
+          </mat-form-field>
+
+          <div class="validate-row">
+            <button
+              mat-stroked-button
+              (click)="validatePath()"
+              [disabled]="validating() || !rootPath"
+            >
+              @if (validating()) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <mat-icon>check_circle</mat-icon>
+              }
+              Validate Path
+            </button>
+
+            @if (validation()) {
+              <div
+                class="validation-result"
+                [class.valid]="validation()?.exists"
+                [class.invalid]="!validation()?.exists"
+              >
+                @if (validation()?.exists) {
+                  <mat-icon>check</mat-icon>
+                  <span>Valid directory</span>
+                  @if (validation()?.isGitRepo) {
+                    <mat-icon class="feature-icon">source</mat-icon>
+                  }
+                  @if (validation()?.hasPackageJson) {
+                    <mat-icon class="feature-icon">inventory_2</mat-icon>
+                  }
+                } @else {
+                  <mat-icon>error</mat-icon>
+                  <span>Directory not found</span>
+                }
+              </div>
+            }
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Workspace ID</mat-label>
+            <input
+              matInput
+              [(ngModel)]="workspaceId"
+              placeholder="my-project"
+            />
+            <mat-hint>Unique identifier for this workspace</mat-hint>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button mat-button (click)="goBack()">Cancel</button>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="register()"
+          [disabled]="!canRegister || registering()"
+        >
+          @if (registering()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon>add</mat-icon>
+          }
+          Register
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

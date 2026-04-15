@@ -1,0 +1,65 @@
+<div class="workspace-list-page">
+  <mat-toolbar color="primary">
+    <span>Assistant Workspaces</span>
+    <span class="spacer"></span>
+    <button
+      mat-icon-button
+      (click)="chatSidebarService.toggle()"
+      [matTooltip]="
+        chatSidebarService.isOpen() ? 'Close Assistant' : 'Open Assistant'
+      "
+    >
+      <mat-icon>{{
+        chatSidebarService.isOpen() ? "chat" : "smart_toy"
+      }}</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      (click)="themeService.toggle()"
+      [matTooltip]="
+        themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'
+      "
+    >
+      <mat-icon>{{
+        themeService.isDark() ? "light_mode" : "dark_mode"
+      }}</mat-icon>
+    </button>
+    <button mat-icon-button (click)="refreshAll()" matTooltip="Refresh all">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-raised-button color="accent" (click)="onAddWorkspace()">
+      <mat-icon>add</mat-icon>
+      Add Workspace
+    </button>
+  </mat-toolbar>
+
+  <div class="content">
+    @if (loading()) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+        <p>Loading workspaces...</p>
+      </div>
+    } @else if (workspaces().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">folder_off</mat-icon>
+        <h2>No workspaces registered</h2>
+        <p>Get started by adding your first workspace</p>
+        <button mat-raised-button color="primary" (click)="onAddWorkspace()">
+          <mat-icon>add</mat-icon>
+          Add Workspace
+        </button>
+      </div>
+    } @else {
+      <div class="workspace-grid">
+        @for (ws of workspaces(); track ws.id) {
+          <app-workspace-card
+            [workspace]="ws"
+            (refreshRuntime)="onRefreshRuntime($event)"
+            (viewDetails)="onViewDetails($event)"
+            (deleteWorkspace)="onDeleteWorkspace($event)"
+          />
+        }
+      </div>
+    }
+  </div>
+</div>

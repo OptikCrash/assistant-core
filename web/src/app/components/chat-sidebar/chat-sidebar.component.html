@@ -1,0 +1,216 @@
+<div
+  class="chat-sidebar"
+  [class.open]="sidebarService.isOpen()"
+  [style.width.px]="sidebarService.width()"
+>
+  <!-- Resize handle -->
+  <div class="resize-handle" (mousedown)="startResize($event)"></div>
+
+  <!-- Header -->
+  <div class="sidebar-header">
+    <div class="header-title">
+      <mat-icon>smart_toy</mat-icon>
+      <span>Assistant</span>
+    </div>
+    <button mat-icon-button (click)="sidebarService.close()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Workspace selector -->
+  <div class="workspace-selector">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Workspace</mat-label>
+      <mat-select
+        [value]="sidebarService.selectedWorkspaceId()"
+        (selectionChange)="onWorkspaceChange($event.value)"
+      >
+        @for (ws of workspaces(); track ws.id) {
+          <mat-option [value]="ws.id">{{ ws.id }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Messages area -->
+  <div class="messages-container" #messagesContainer>
+    @if (sidebarService.currentMessages().length === 0) {
+      <div class="empty-state">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>Ask me to help with your project</p>
+        <p class="hint">Try: "Add a created_at column to the users table"</p>
+      </div>
+    } @else {
+      @for (msg of sidebarService.currentMessages(); track msg.id) {
+        <div class="message" [class]="msg.role">
+          @if (msg.role === "user") {
+            <div class="message-content user-message">
+              {{ msg.content }}
+            </div>
+          } @else if (msg.role === "plan" && msg.plan) {
+            <mat-card class="plan-card">
+              <mat-card-header>
+                <mat-icon
+                  mat-card-avatar
+                  [class]="'risk-' + msg.plan.riskLevel.toLowerCase()"
+                >
+                  {{ getRiskIcon(msg.plan.riskLevel) }}
+                </mat-icon>
+                <mat-card-title>{{ msg.plan.plan.intent }}</mat-card-title>
+                <mat-card-subtitle>
+                  <span
+                    class="risk-badge"
+                    [class]="'risk-' + msg.plan.riskLevel.toLowerCase()"
+                  >
+                    {{ msg.plan.riskLevel }}
+                  </span>
+                </mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="reasoning">{{ msg.plan.plan.reasoning }}</p>
+
+                <div class="steps">
+                  <h4>Steps:</h4>
+                  <ol>
+                    @for (step of msg.plan.plan.steps; track step) {
+                      <li>{{ step }}</li>
+                    }
+                  </ol>
+                </div>
+
+                @if (msg.plan.plan.toolCalls.length > 0) {
+                  <div class="tool-calls">
+                    <h4>Tools:</h4>
+                    <div class="tool-tags">
+                      @for (call of msg.plan.plan.toolCalls; track $index) {
+                        <span class="tool-tag">{{ call.tool }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </mat-card-content>
+
+              @if (sidebarService.pendingPlan()?.planId === msg.plan.planId) {
+                <mat-card-actions>
+                  @if (executing()) {
+                    <mat-spinner diameter="24"></mat-spinner>
+                  } @else {
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      (click)="
+                        executePlan(msg.plan, msg.plan.riskLevel === 'HIGH')
+                      "
+                    >
+                      <mat-icon>play_arrow</mat-icon>
+                      Execute
+                    </button>
+                    <button mat-button (click)="rejectPlan()">
+                      <mat-icon>close</mat-icon>
+                      Reject
+                    </button>
+                  }
+                </mat-card-actions>
+              }
+            </mat-card>
+          } @else if (msg.role === "execution" && msg.execution) {
+            <mat-card
+              class="execution-card"
+              [class.success]="msg.execution.status === 'COMPLETED'"
+              [class.failed]="msg.execution.status === 'FAILED'"
+            >
+              <mat-card-header>
+                <mat-icon
+                  mat-card-avatar
+                  [class]="
+                    msg.execution.status === 'COMPLETED' ? 'success' : 'failed'
+                  "
+                >
+                  {{
+                    msg.execution.status === "COMPLETED"
+                      ? "check_circle"
+                      : "error"
+                  }}
+                </mat-icon>
+                <mat-card-title>{{ msg.content }}</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="results">
+                  @for (result of msg.execution.results; track $index) {
+                    <div
+                      class="result-item"
+                      [class.success]="result.success"
+                      [class.failed]="!result.success"
+                    >
+                      <mat-icon>{{
+                        result.success ? "check" : "close"
+                      }}</mat-icon>
+                      <span class="tool-name">{{ result.tool }}</span>
+                      @if (result.error) {
+                        <span class="error-text">{{ result.error }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </mat-card-content>
+            </mat-card>
+          } @else if (msg.role === "assistant") {
+            <div class="message-content assistant-message">
+              {{ msg.content }}
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (sending()) {
+      <div class="message assistant">
+        <div class="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Input area -->
+  <div class="input-area">
+    <div class="input-row">
+      <mat-form-field appearance="outline" class="message-input">
+        <textarea
+          matInput
+          #messageInput
+          [(ngModel)]="messageText"
+          (keydown)="onKeydown($event)"
+          placeholder="Ask me to do something..."
+          rows="2"
+          [disabled]="sending() || !sidebarService.selectedWorkspaceId()"
+        ></textarea>
+      </mat-form-field>
+      <button
+        mat-fab
+        color="primary"
+        (click)="sendMessage()"
+        [disabled]="
+          !messageText.trim() ||
+          sending() ||
+          !sidebarService.selectedWorkspaceId()
+        "
+        matTooltip="Send message"
+      >
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+    <div class="input-actions">
+      <button
+        mat-button
+        (click)="clearChat()"
+        [disabled]="sidebarService.currentMessages().length === 0"
+      >
+        <mat-icon>delete_outline</mat-icon>
+        Clear
+      </button>
+    </div>
+  </div>
+</div>

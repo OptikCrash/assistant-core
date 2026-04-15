@@ -335,7 +335,7 @@ Lightweight parser that extracts imports and exports to support cross-file depen
 
 ```bash
 # Review staged changes
-curl -X POST http://localhost:4000/review
+curl -X POST http://localhost:1339/review
 
 # Response:
 {
@@ -352,12 +352,12 @@ curl -X POST http://localhost:4000/review
 
 ```bash
 # Register workspace
-curl -X POST http://localhost:4000/workspace/register \
+curl -X POST http://localhost:1339/workspace/register \
   -H "Content-Type: application/json" \
   -d '{"id": "BOSS", "rootPath": "/path/to/repo"}'
 
 # Run smart review
-curl -X POST http://localhost:4000/review-smart \
+curl -X POST http://localhost:1339/review-smart \
   -H "Content-Type: application/json" \
   -d '{"workspaceId": "BOSS"}'
 ```
@@ -406,7 +406,7 @@ Add to `.git/hooks/pre-commit`:
 
 echo "Running AI code review..."
 
-response=$(curl -s -X POST http://localhost:4000/review)
+response=$(curl -s -X POST http://localhost:1339/review)
 
 breaking_changes=$(echo $response | jq '.breakingChanges | length')
 
@@ -448,7 +448,7 @@ jobs:
 git add .
 
 # 2. Review before commit
-curl -X POST http://localhost:4000/review | jq .
+curl -X POST http://localhost:1339/review | jq .
 
 # 3. Address issues if needed
 # ... make changes ...
@@ -541,7 +541,7 @@ Run reviews on small, focused changes rather than large diffs:
 ```bash
 # Good: Review after each feature
 git add feature-file.ts
-curl -X POST http://localhost:4000/review
+curl -X POST http://localhost:1339/review
 
 # Avoid: Reviewing 50 files at once
 ```

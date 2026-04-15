@@ -27,7 +27,8 @@ export function resolveSafePath(rootPath: string, relativePath: string): string 
     const realRoot = fs.realpathSync(rootPath);
 
     // Check if resolved path escapes workspace (handles ../ traversal)
-    if (!resolved.startsWith(path.resolve(rootPath))) {
+    const rootResolved = path.resolve(rootPath);
+    if (!(resolved === rootResolved || resolved.startsWith(rootResolved + path.sep))) {
         throw new Error(`Path escape detected: ${relativePath}`);
     }
 
@@ -66,7 +67,8 @@ export async function resolveSafePathAsync(
     }
 
     // Check if resolved path escapes workspace (handles ../ traversal)
-    if (!resolved.startsWith(path.resolve(rootPath))) {
+    const rootResolved = path.resolve(rootPath);
+    if (!(resolved === rootResolved || resolved.startsWith(rootResolved + path.sep))) {
         throw new Error(`Path escape detected: ${relativePath}`);
     }
 

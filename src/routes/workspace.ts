@@ -19,11 +19,19 @@ const service = new WorkspaceService();
 
 /**
  * GET /workspace
+ * Returns all workspaces with runtime state populated
  */
 workspaceRouter.get("/", async (req, res) => {
     try {
         const list = await listWorkspaces();
-        res.json(list);
+
+        // Populate runtime state for each workspace
+        const withRuntime = list.map(ws => ({
+            ...ws,
+            runtime: detectWorkspaceRuntime(ws.rootPath)
+        }));
+
+        res.json(withRuntime);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }

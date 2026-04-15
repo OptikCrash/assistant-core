@@ -63,11 +63,22 @@ export async function refreshWorkspaceIndex(
         if (allChangedFiles.length > 0) {
             console.log(`Incremental reindex: ${allChangedFiles.length} changed files (${dirtyFiles.length} dirty)`);
 
-            // Remove changed paths from existing index
+            // Remove changed paths AND any files inside changed directories from existing index
             const changedSet = new Set(allChangedFiles.map(normalizePath));
-            const unchangedFiles = existingIndex.files.filter(
-                f => !changedSet.has(normalizePath(f.path))
-            );
+            const unchangedFiles = existingIndex.files.filter(f => {
+                const filePath = normalizePath(f.path);
+                // Remove exact matches
+                if (changedSet.has(filePath)) {
+                    return false;
+                }
+                // Remove files that are inside a changed directory
+                for (const changedPath of changedSet) {
+                    if (filePath.startsWith(changedPath + "/")) {
+                        return false;
+                    }
+                }
+                return true;
+            });
 
             // Re-index only changed paths (with directory recursion)
             const reindexedFiles = await indexSpecificPaths(
@@ -76,8 +87,16 @@ export async function refreshWorkspaceIndex(
                 depth
             );
 
-            // Merge into existing index
-            const mergedFiles = [...unchangedFiles, ...reindexedFiles];
+            // Merge and dedupe by path
+            const seenPaths = new Set<string>();
+            const mergedFiles: IndexedFile[] = [];
+            for (const file of [...unchangedFiles, ...reindexedFiles]) {
+                const normalized = normalizePath(file.path);
+                if (!seenPaths.has(normalized)) {
+                    seenPaths.add(normalized);
+                    mergedFiles.push(file);
+                }
+            }
             const totalSize = mergedFiles.reduce((sum, f) => sum + f.size, 0);
 
             const index: WorkspaceIndex = {

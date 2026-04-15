@@ -1,81 +1,32 @@
 import fs from "fs";
 import micromatch from "micromatch";
 import path from "path";
+import {
+    isSensitivePath,
+    SOURCE_EXTENSIONS
+} from "../securityGuard";
 
 // Per-workspace cache for parsed ignore rules
 const ignoreCache = new Map<string, string[]>();
 
-export const DEFAULT_EXCLUDES = [
-    ".git",
-    "node_modules",
-    ".DS_Store",
-    "dist",
-    "build"
-];
+export function shouldIndexFile(filePath: string, type: "file" | "directory", rootPath?: string): boolean {
+    const normalized = filePath.replace(/\\/g, "/");
 
-const SOURCE_EXTENSIONS = new Set([
-    ".ts",
-    ".tsx",
-    ".js",
-    ".jsx",
-    ".sql",
-    ".json",
-    ".md"
-]);
+    // Exclude sensitive paths for BOTH files and directories
+    if (isSensitivePath(normalized)) return false;
 
-const EXCLUDED_DIRECTORIES = new Set([
-    "node_modules",
-    ".git",
-    "dist",
-    "build",
-    "coverage",
-    ".next",
-    ".turbo"
-]);
-
-const SENSITIVE_FILES = [
-    ".env",
-    ".pem",
-    ".key",
-    "id_rsa"
-];
-
-export function shouldIndexFile(
-    filePath: string,
-    type: "file" | "directory",
-    rootPath?: string
-): boolean {
-
-    // Path segment exclusion (directories in path)
-    const parts = filePath.split("/");
-
-    if (parts.some(p => EXCLUDED_DIRECTORIES.has(p))) {
-        return false;
-    }
-
-    // DEFAULT_EXCLUDES check (exact segment match for any part of path)
-    if (parts.some(p => DEFAULT_EXCLUDES.includes(p))) {
-        return false;
-    }
-
-    // Check .assistantignore glob patterns
+    // .assistantignore patterns
     if (rootPath) {
         const ignorePatterns = loadAssistantIgnore(rootPath);
-        if (ignorePatterns.length > 0 && micromatch.isMatch(filePath, ignorePatterns, { dot: true })) {
+        if (ignorePatterns.length > 0 && micromatch.isMatch(normalized, ignorePatterns, { dot: true })) {
             return false;
         }
     }
 
-    if (type === "directory") {
-        return true;
-    }
+    if (type === "directory") return true;
 
-    // Sensitive file exclusion
-    if (SENSITIVE_FILES.some(name => filePath.endsWith(name))) {
-        return false;
-    }
-
-    const ext = filePath.substring(filePath.lastIndexOf("."));
+    const dot = normalized.lastIndexOf(".");
+    const ext = dot >= 0 ? normalized.substring(dot) : "";
 
     return SOURCE_EXTENSIONS.has(ext);
 }

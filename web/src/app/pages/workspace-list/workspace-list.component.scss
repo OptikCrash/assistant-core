@@ -1,0 +1,69 @@
+.workspace-list-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+mat-toolbar {
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  button {
+    margin-left: 8px;
+  }
+}
+
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  gap: 16px;
+
+  p {
+    color: var(--text-secondary);
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0 0 24px 0;
+    color: var(--text-secondary);
+  }
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+  justify-items: center;
+}

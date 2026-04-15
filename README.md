@@ -62,7 +62,7 @@ LLM_PROVIDER=openai
 npm run dev
 ```
 
-The server will start on `http://localhost:4000` with auto-reload enabled.
+The server will start on `http://localhost:1339` with auto-reload enabled.
 
 ### Production Build
 
@@ -299,7 +299,7 @@ See individual README.md files in each directory for detailed documentation.
 1. **Send a natural language request:**
 
 ```bash
-curl -X POST http://localhost:4000/chat \
+curl -X POST http://localhost:1339/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Add a created_at timestamp to the posts table"}'
 ```
@@ -309,7 +309,7 @@ curl -X POST http://localhost:4000/chat \
 2. **Execute the plan if approved:**
 
 ```bash
-curl -X POST http://localhost:4000/execute \
+curl -X POST http://localhost:1339/execute \
   -H "Content-Type: application/json" \
   -d '{"planId": "plan-uuid-from-step-1", "confirmRisk": true}'
 ```
@@ -317,13 +317,13 @@ curl -X POST http://localhost:4000/execute \
 1. **Audit the execution:**
 
 ```bash
-curl http://localhost:4000/audit/execution-uuid-from-step-3
+curl http://localhost:1339/audit/execution-uuid-from-step-3
 ```
 
 1. **Register a workspace for smart reviews:**
 
 ```bash
-curl -X POST http://localhost:4000/workspace/register \
+curl -X POST http://localhost:1339/workspace/register \
   -H "Content-Type: application/json" \
   -d '{"id": "BOSS", "rootPath": "/path/to/repo"}'
 ```
@@ -331,7 +331,7 @@ curl -X POST http://localhost:4000/workspace/register \
 1. **Run a smart review:**
 
 ```bash
-curl -X POST http://localhost:4000/review-smart \
+curl -X POST http://localhost:1339/review-smart \
   -H "Content-Type: application/json" \
   -d '{"workspaceId": "BOSS"}'
 ```
