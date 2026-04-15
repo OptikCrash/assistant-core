@@ -6,8 +6,16 @@ export function detectWorkspaceRuntime(
 ): WorkspaceRuntimeState {
 
     const runtime: WorkspaceRuntimeState = {
+        currentBranch: "unknown",
+        defaultBranch: "main",
         hasUncommittedChanges: false,
-        hasStagedChanges: false
+        hasStagedChanges: false,
+        aheadBy: 0,
+        behindBy: 0,
+        dirty: false,
+        untrackedFiles: 0,
+        lastCommitHash: "",
+        lastCommitDate: ""
     };
 
     try {
@@ -41,6 +49,16 @@ export function detectWorkspaceRuntime(
             .split("\n")
             .some(line => line.startsWith("M ") || line.startsWith("A "));
 
+        runtime.untrackedFiles = status
+            .split("\n")
+            .filter(line => line.startsWith("??"))
+            .length;
+
+        runtime.dirty =
+            runtime.hasUncommittedChanges ||
+            runtime.hasStagedChanges ||
+            runtime.untrackedFiles > 0;
+
         // --- Ahead / Behind Detection ---
         if (runtime.defaultBranch) {
 
@@ -58,6 +76,16 @@ export function detectWorkspaceRuntime(
             runtime.behindBy = isNaN(behind) ? 0 : behind;
             runtime.aheadBy = isNaN(ahead) ? 0 : ahead;
         }
+
+        runtime.lastCommitHash = execSync(
+            "git rev-parse HEAD",
+            { cwd: rootPath }
+        ).toString().trim();
+
+        runtime.lastCommitDate = execSync(
+            "git log -1 --format=%cd --date=iso",
+            { cwd: rootPath }
+        ).toString().trim();
 
     } catch {
         // Fail silently — runtime detection should never crash engine

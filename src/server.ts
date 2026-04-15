@@ -5,6 +5,7 @@ import cors from 'cors';
 import express from 'express';
 import { auditRouter } from './routes/audit';
 import { chatRouter } from './routes/chat';
+import { compareBranchesRouter } from './routes/compareBranches';
 import { executeRouter } from './routes/execute';
 import { reviewRouter } from './routes/review';
 import { reviewSmartRouter } from './routes/reviewSmart';
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/chat', chatRouter);
+app.use('/compare-branches', compareBranchesRouter);
 app.use('/execute', executeRouter);
 app.use('/audit', auditRouter);
 app.use('/review', reviewRouter);

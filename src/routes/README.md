@@ -156,6 +156,15 @@ This is the legacy review endpoint. Use `/review-smart` for cross-file analysis 
 - Sends diff to LLM for analysis
 - Returns structured review feedback
 
+**Request Body:**
+
+```typescript
+{
+  workspaceId: string; // ID from /workspace/register
+  staged?: boolean;    // Defaults to true
+}
+```
+
 **Response:**
 
 ```typescript
@@ -172,7 +181,9 @@ This is the legacy review endpoint. Use `/review-smart` for cross-file analysis 
 **Example:**
 
 ```bash
-curl -X POST http://localhost:4000/review
+curl -X POST http://localhost:4000/review \
+  -H "Content-Type: application/json" \
+  -d '{"workspaceId": "BOSS", "staged": true}'
 ```
 
 **Note:** Currently only reviews staged changes. To review unstaged changes, stage them first with `git add`.
@@ -223,6 +234,82 @@ Runs the smart review engine, which performs per-file analysis plus cross-file d
 curl -X POST http://localhost:4000/review-smart \
   -H "Content-Type: application/json" \
   -d '{"workspaceId": "BOSS"}'
+```
+
+---
+
+### [compareBranches.ts](compareBranches.ts)
+
+**Endpoint:** `POST /compare-branches`
+
+Compares your branch against a combined branch state, where a primary branch is merged with one or more dependency refs inside a temporary local worktree before diffing everything against a shared base ref.
+
+**Request Body:**
+
+```typescript
+{
+  workspaceId: string;       // Registered workspace ID
+  yourRef: string;           // Your branch or ref
+  theirBaseRef: string;      // Their primary branch or ref
+  theirMergeRefs?: string[]; // Additional refs to merge into theirBaseRef
+  baseRef?: string;          // Comparison base, defaults to origin/develop
+  fetch?: boolean;           // Optionally run git fetch <remote> --prune first
+  remote?: string;           // Remote name for fetch, defaults to origin
+  includePatches?: boolean;  // Include raw diff text in the response
+}
+```
+
+**Response (truncated):**
+
+```typescript
+{
+  workspaceId: string;
+  baseRef: string;
+  yourRef: string;
+  theirCombined: {
+    baseRef: string;
+    mergeRefs: string[];
+    combinedLabel: string;
+  };
+  your: {
+    ref: string;
+    files: string[];
+    fileCount: number;
+    shortStat: {
+      filesChanged: number;
+      insertions: number;
+      deletions: number;
+    };
+    stat: string;
+    patch?: string;
+  };
+  theirs: { ...same shape as your... };
+  overlappingFiles: string[];
+  overlapCount: number;
+  overlapPercentOfYours: number;
+  overlapPercentOfTheirs: number;
+  onlyInYours: string[];
+  onlyInTheirs: string[];
+}
+```
+
+**Conflict Handling:**
+
+- Returns `409` if the temporary merge fails
+- Includes `mergeRef` and `conflictFiles` to show which dependency ref caused the problem
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:4000/compare-branches \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workspaceId": "BOSS",
+    "yourRef": "feature/my-branch",
+    "theirBaseRef": "feature/their-pr1",
+    "theirMergeRefs": ["feature/their-pr2"],
+    "baseRef": "origin/develop"
+  }'
 ```
 
 ---

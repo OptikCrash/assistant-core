@@ -23,6 +23,7 @@ The system includes multiple safety layers including risk classification (LOW/ME
 - **📝 Execution Logging**: Complete audit trail of all executed tasks
 - **🔍 Git Review**: AI-powered code review of git diffs
 - **🧭 Smart Review Engine**: Per-file analysis plus cross-file risk detection
+- **🔀 Branch Comparison**: Compare your branch against a locally merged combination of other branches
 - **🗂️ Workspace Registry**: Register workspaces for safer, scoped tools
 - **🔧 Extensible Tools**: Pluggable tool system for database migrations, code modifications, and more
 
@@ -172,6 +173,15 @@ Get an AI-powered review of staged git changes.
 
 This is the legacy single-pass reviewer. For cross-file analysis and workspace-aware context, use `/review-smart`.
 
+**Request:**
+
+```json
+{
+  "workspaceId": "workspace-id-here",
+  "staged": true
+}
+```
+
 **Response:**
 
 ```json
@@ -213,6 +223,60 @@ Run the smart review engine, which performs per-file analysis and cross-file dep
   "architecturalConcerns": [],
   "overallRisk": "HIGH",
   "confidence": 82
+}
+```
+
+### POST `/compare-branches`
+
+Compare your branch against a combined branch state, where one or more refs are merged into a base branch inside a temporary local worktree.
+
+This is useful for questions like: "How much of my branch overlaps with their PR after their dependent PR is merged in?"
+
+**Request:**
+
+```json
+{
+  "workspaceId": "BOSS",
+  "yourRef": "feature/my-branch",
+  "theirBaseRef": "feature/their-pr1",
+  "theirMergeRefs": ["feature/their-pr2"],
+  "baseRef": "origin/develop",
+  "fetch": false,
+  "includePatches": false
+}
+```
+
+**Response (truncated):**
+
+```json
+{
+  "workspaceId": "BOSS",
+  "baseRef": "origin/develop",
+  "yourRef": "feature/my-branch",
+  "theirCombined": {
+    "baseRef": "feature/their-pr1",
+    "mergeRefs": ["feature/their-pr2"],
+    "combinedLabel": "feature/their-pr1 + feature/their-pr2"
+  },
+  "your": {
+    "ref": "feature/my-branch",
+    "fileCount": 116,
+    "files": ["src/a.ts", "src/b.ts"],
+    "shortStat": {
+      "filesChanged": 116,
+      "insertions": 340,
+      "deletions": 87
+    }
+  },
+  "theirs": {
+    "ref": "feature/their-pr1 + feature/their-pr2",
+    "fileCount": 42,
+    "files": ["src/a.ts", "src/c.ts"]
+  },
+  "overlappingFiles": ["src/a.ts"],
+  "overlapCount": 1,
+  "overlapPercentOfYours": 0.86,
+  "overlapPercentOfTheirs": 2.38
 }
 ```
 
@@ -285,7 +349,7 @@ assistant-core/
 │   ├── audit/                 # Execution logging
 │   ├── workspace/             # Workspace registry and metadata detection
 │   ├── features/              # Feature-specific modules
-│   │   └── git/review/        # Git diff review functionality
+│   │   └── git/               # Git review and branch comparison features
 │   └── types/                 # TypeScript type definitions
 ├── package.json
 ├── tsconfig.json
@@ -334,6 +398,20 @@ curl -X POST http://localhost:4000/workspace/register \
 curl -X POST http://localhost:4000/review-smart \
   -H "Content-Type: application/json" \
   -d '{"workspaceId": "BOSS"}'
+```
+
+1. **Compare your branch against a combined branch:**
+
+```bash
+curl -X POST http://localhost:4000/compare-branches \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workspaceId": "BOSS",
+    "yourRef": "feature/my-branch",
+    "theirBaseRef": "feature/their-pr1",
+    "theirMergeRefs": ["feature/their-pr2"],
+    "baseRef": "origin/develop"
+  }'
 ```
 
 ## Security Considerations
